@@ -268,7 +268,8 @@ try:
         page.keyboard.press("Space")
         assert page.locator(".timing").count() == 1, "Space reveals the answer"
         shot(page, "21-desktop-card-back")
-        page.keyboard.press("2")
+        assert page.locator(".answer-row .grade").first.get_attribute("data-grade") != "1", "Got it is on the left"
+        page.keyboard.press("1")
         study_all(page)
         set_clock(page, 4 * DAY_MS)
         page.goto(BASE)

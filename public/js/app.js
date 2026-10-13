@@ -396,10 +396,10 @@ function studyHTML() {
     const waits = preview(card, t, schedOpts(view.id)).map(formatWait);
     const g = view.override ? 3 : timedGrade(card, deck, item, dir, view.elapsed);
     const secs = `${(view.elapsed / 1000).toFixed(1)} s`;
-    const got = `<button class="grade grade--${g} btn--grow" data-grade="${g}" data-autofocus><span>${dir === 'p' ? 'Next' : 'Got it'}</span><small>${GRADE_NAMES[g]} · ${waits[g - 1]}</small><kbd>${dir === 'p' ? 'Enter' : '2'}</kbd></button>`;
+    const got = `<button class="grade grade--${g} btn--grow" data-grade="${g}" data-autofocus><span>${dir === 'p' ? 'Next' : 'Got it'}</span><small>${GRADE_NAMES[g]} · ${waits[g - 1]}</small><kbd>${dir === 'p' ? 'Enter' : '1'}</kbd></button>`;
     actions = dir === 'p'
       ? `<div class="answer-row">${got}</div>`
-      : `<div class="answer-row"><button class="grade grade--1 btn--grow" data-grade="1"><span>Missed it</span><small>Again · ${waits[0]}</small><kbd>1</kbd></button>${got}</div>`;
+      : `<div class="answer-row">${got}<button class="grade grade--1 btn--grow" data-grade="1"><span>Missed it</span><small>Again · ${waits[0]}</small><kbd>2</kbd></button></div>`;
     actions += `<p class="timing">${view.override ? 'Counted as right.' : `Answered in ${secs}.`} <button class="link link--small" data-act="manual-grade">Choose the grade myself</button></p>`;
     if (view.manual) actions = gradeRow(waits);
   } else {
