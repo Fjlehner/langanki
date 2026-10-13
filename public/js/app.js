@@ -309,6 +309,7 @@ function nextCard() {
   }
   const card = state.cards[id];
   view = { id, revealed: false, typed: '', correct: null, override: false, wasNew: !card || card.st === NEW };
+  startTimer();
   go('study');
 }
 
@@ -365,11 +366,18 @@ function studyHTML() {
   } else if (dir === 'p' && !view.correct && !view.override) {
     actions = `<div class="answer-row"><button class="grade grade--1 btn--grow" data-grade="1" data-autofocus><span>Again</span><small>${formatWait(preview(card, t, schedOpts(view.id))[0])}</small></button></div>
       <button class="link link--small" data-act="override">I knew it, I just mistyped</button>`;
-  } else {
+  } else if (state.settings.grading === 'auto') {
     const waits = preview(card, t, schedOpts(view.id)).map(formatWait);
-    actions = `<div class="grades" role="group" aria-label="How well did you remember?">
-      ${['Again', 'Hard', 'Good', 'Easy'].map((g, i) => `<button class="grade grade--${i + 1}" data-grade="${i + 1}" ${i === 2 ? 'data-autofocus' : ''}><span>${g}</span><small>${waits[i]}</small><kbd>${i + 1}</kbd></button>`).join('')}
-    </div>`;
+    const g = view.override ? 3 : timedGrade(card, deck, item, dir, view.elapsed);
+    const secs = `${(view.elapsed / 1000).toFixed(1)} s`;
+    const got = `<button class="grade grade--${g} btn--grow" data-grade="${g}" data-autofocus><span>${dir === 'p' ? 'Next' : 'Got it'}</span><small>${GRADE_NAMES[g]} · ${waits[g - 1]}</small><kbd>${dir === 'p' ? 'Enter' : '2'}</kbd></button>`;
+    actions = dir === 'p'
+      ? `<div class="answer-row">${got}</div>`
+      : `<div class="answer-row"><button class="grade grade--1 btn--grow" data-grade="1"><span>Missed it</span><small>Again · ${waits[0]}</small><kbd>1</kbd></button>${got}</div>`;
+    actions += `<p class="timing">${view.override ? 'Counted as right.' : `Answered in ${secs}.`} <button class="link link--small" data-act="manual-grade">Choose the grade myself</button></p>`;
+    if (view.manual) actions = gradeRow(waits);
+  } else {
+    actions = gradeRow(preview(card, t, schedOpts(view.id)).map(formatWait));
   }
 
   return `<section class="study" aria-label="Study">
@@ -468,12 +476,55 @@ function guideHTML(item, { open = false } = {}) {
   return `<details class="guide" ${open ? 'open' : ''}><summary>How to say it</summary><ol class="parts">${parts}</ol>${notes}</details>`;
 }
 
+const GRADE_NAMES = { 1: 'Again', 2: 'Hard', 3: 'Good', 4: 'Easy' };
+
+function gradeRow(waits) {
+  return `<div class="grades" role="group" aria-label="How well did you remember?">
+      ${['Again', 'Hard', 'Good', 'Easy'].map((g, i) => `<button class="grade grade--${i + 1}" data-grade="${i + 1}" ${i === 2 ? 'data-autofocus' : ''}><span>${g}</span><small>${waits[i]}</small><kbd>${i + 1}</kbd></button>`).join('')}
+    </div>`;
+}
+
+// ---------- answer timer ----------
+// Time from the card appearing to Show answer (or Check), not counting time the tab was hidden.
+
+let timer = { start: 0, hiddenAt: 0, hidden: 0 };
+function startTimer() {
+  timer = { start: performance.now(), hiddenAt: document.hidden ? performance.now() : 0, hidden: 0 };
+}
+function stopTimer() {
+  const t = performance.now();
+  const hidden = timer.hidden + (timer.hiddenAt ? t - timer.hiddenAt : 0);
+  return Math.max(0, t - timer.start - hidden);
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) timer.hiddenAt = performance.now();
+  else if (timer.hiddenAt) {
+    timer.hidden += performance.now() - timer.hiddenAt;
+    timer.hiddenAt = 0;
+  }
+});
+
+// A correct answer's grade from how long it took. Easy needs a card that's past learning,
+// so a first lucky guess doesn't send a brand-new character away for weeks.
+const TIMING = {
+  r: { easy: 3000, good: 8000, perExtra: 1500 }, // reading: seconds to Show answer
+  p: { easy: 6000, good: 15000, perExtra: 3000 }, // writing: seconds to Check, typing included
+};
+function timedGrade(card, deck, item, dir, ms) {
+  const units = deck.kind === 'words' ? (splitWord(item.text, deckById(deck.requires)) || [item.text]).length : 1;
+  const t = TIMING[dir];
+  const extra = (units - 1) * t.perExtra;
+  const g = ms <= t.easy + extra ? 4 : ms <= t.good + extra ? 3 : 2;
+  return card.st === 2 ? g : Math.min(g, 3);
+}
+
 function schedOpts(id) {
   return { retention: state.settings.retention, id };
 }
 
 function reveal() {
   if (view.revealed) return;
+  view.elapsed = stopTimer();
   view.revealed = true;
   const { deck, item } = parseId(view.id);
   render();
@@ -493,14 +544,14 @@ function grade(g) {
   const t = now();
   const prev = state.cards[id];
   const day = dayKey(t);
-  undoStack.push({ id, prev: prev ? { ...prev } : null, daily: JSON.stringify(state.daily[day] || null), day, logLen: state.log.length, session: session.snapshot(), view: { ...view, revealed: false, correct: null, override: false, typed: '' } });
+  undoStack.push({ id, prev: prev ? { ...prev } : null, daily: JSON.stringify(state.daily[day] || null), day, logLen: state.log.length, session: session.snapshot(), view: { ...view, revealed: false, correct: null, override: false, manual: false, typed: '' } });
   if (undoStack.length > 10) undoStack.shift();
   const card = prev || newCard();
   const { deck, dir } = parseId(id);
   if (card.st === NEW) bumpDaily(state, day, `${deck.id}:${dir === 'p' ? 'pnew' : 'new'}`);
   bumpDaily(state, day, 'reviews');
   state.cards[id] = schedule(card, g, t, schedOpts(id));
-  addLog(state, { at: t, id, g });
+  addLog(state, { at: t, id, g, ms: Math.round(view.elapsed || 0) });
   commit();
   session.answered(id);
   nextCard();
@@ -517,6 +568,7 @@ function undo() {
   state.log.length = u.logLen;
   session.restore(u.session);
   view = u.view;
+  startTimer();
   commit();
   render();
 }
@@ -628,6 +680,14 @@ function settingsHTML() {
         </select>
         <p class="help">The scheduler times each review for this chance of remembering.</p>
       </div>
+      <fieldset class="field">
+        <legend>Grading</legend>
+        <div class="choices">
+          <label class="choice"><input type="radio" name="grading" value="auto" ${s.grading === 'auto' ? 'checked' : ''} data-setting="grading"> By time</label>
+          <label class="choice"><input type="radio" name="grading" value="manual" ${s.grading === 'manual' ? 'checked' : ''} data-setting="grading"> Choose myself</label>
+        </div>
+        <p class="help">By time: you only say whether you got it. Answers within ${TIMING.r.easy / 1000} seconds count as Easy, within ${TIMING.r.good / 1000} as Good, slower as Hard. New cards top out at Good. Choose myself shows Again, Hard, Good and Easy.</p>
+      </fieldset>
       <fieldset class="field">
         <legend>Pause new cards</legend>
         ${decks.map((d) => `<label class="check"><input type="checkbox" data-pause="${d.id}" ${s.paused?.[d.id] ? 'checked' : ''}> ${esc(d.name)}</label>`).join('')}
@@ -810,6 +870,9 @@ app.addEventListener('click', async (e) => {
     case 'override':
       view.override = true;
       return render();
+    case 'manual-grade':
+      view.manual = true;
+      return render();
     case 'undo':
       return undo();
     case 'end-study':
@@ -929,6 +992,22 @@ document.addEventListener('keydown', (e) => {
   if (!view.revealed && (e.key === ' ' || e.key === 'Enter') && parseId(view.id).dir === 'r') {
     e.preventDefault();
     return reveal();
+  }
+  if (view.revealed && (e.key === 'Enter' || e.key === ' ')) {
+    const btn = app.querySelector('.study__actions [data-autofocus][data-grade]');
+    if (btn) {
+      e.preventDefault();
+      return grade(Number(btn.dataset.grade));
+    }
+  }
+  if (view.revealed && /^[1-4]$/.test(e.key) && state.settings.grading === 'auto' && !view.manual) {
+    const btns = [...app.querySelectorAll('.study__actions [data-grade]')];
+    const btn = btns[Number(e.key) - 1];
+    if (btn) {
+      e.preventDefault();
+      return grade(Number(btn.dataset.grade));
+    }
+    return;
   }
   if (view.revealed && /^[1-4]$/.test(e.key)) {
     const btn = app.querySelector(`[data-grade="${e.key}"]`);

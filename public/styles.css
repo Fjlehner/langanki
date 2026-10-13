@@ -254,6 +254,9 @@ kbd { font: 600 0.7rem/1 var(--font-ui); padding: 3px 5px; border-radius: 4px; b
 
 .study__actions { display: grid; gap: 6px; }
 .answer-row { display: flex; gap: 8px; }
+.timing { text-align: center; color: var(--muted); font-size: 0.875rem; max-width: none; }
+.timing .link--small { margin-left: 6px; }
+.answer-row .grade { flex: 1; }
 .grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .grade {
   display: grid; justify-items: center; gap: 2px; min-height: 62px; padding: 8px 4px;

@@ -11,6 +11,7 @@ export function freshState() {
     settings: {
       newPerDay: 10, // new cards per day, per script (hiragana and katakana count separately)
       retention: 0.9, // FSRS target: chance of remembering a card when it comes back
+      grading: 'auto', // auto: grade correct answers by answer time | manual: Again/Hard/Good/Easy
       quiet: false, // recognition only, no sound
       autoplay: true, // speak the sound when the answer shows
       kanaStyle: 'textbook', // textbook (handwritten forms) | print
@@ -20,7 +21,7 @@ export function freshState() {
     },
     cards: {}, // card id -> FSRS card
     daily: {}, // 'YYYY-MM-DD' -> { 'hira:new': 3, 'hira:pnew': 1, reviews: 40 }
-    log: [], // { at, id, g }
+    log: [], // { at, id, g, ms }
   };
 }
 

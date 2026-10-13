@@ -41,7 +41,7 @@ def study(page, deck):
             return
         if page.locator("[data-act=reveal]").count():
             page.click("[data-act=reveal]")
-        page.click("[data-grade='3']")
+        page.click(".study__actions [data-autofocus][data-grade]")
     raise AssertionError("session never finished")
 
 

@@ -20,7 +20,7 @@ LangAnki is a free, browser-based flashcard app for learning writing systems, bu
 - **Both card directions.** Recognition (see the character, recall the sound) and production (from the sound, produce the character). Production unlocks per character once recognition is reliable.
 - **Quiet mode.** Recognition only, no audio, for the office.
 - **Pronunciation guide for every character:** IPA, consonant and vowel mapping, and the closest sounds in English and Spanish (Joe speaks both).
-- **Self-grading** (Again, Hard, Good, Easy) for recognition cards.
+- **Timed grading** (changed from self-grading at Joe's request): the learner only says Missed it or Got it, and a correct answer's grade comes from the time to Show answer. Thresholds are in `TIMING` in `app.js` (reading: Easy within 3 s, Good within 8 s, else Hard; writing: 6 s and 15 s; +1.5 s or +3 s per extra character in words). Easy is only given to cards past learning. Settings has a "Choose myself" option with all four grades. The answer time is stored in the review log as `ms`.
 - **Production input:** the device's own language keyboard on phones and tablets; on desktops, also a clickable on-screen keyboard. The on-screen keyboard never appears on phones or tablets.
 - **FSRS** scheduling. **10 new cards per day per script**, adjustable.
 - **Audio:** built-in browser speech now, recorded clips later where a voice sounds poor.
@@ -54,6 +54,7 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 - Stroke order for kana.
 - Recorded audio where browser voices are poor (`RECORDINGS` in `speech.js`).
 - Fonts for the other scripts (for example Noto Sans KR, Noto Sans Hebrew, Noto Sans Devanagari) and a cursive Hebrew font.
+- Tune the `TIMING` thresholds once real answer times are in the log.
 - FSRS parameter optimization from the review log once there's enough history.
 
 ## Working on it

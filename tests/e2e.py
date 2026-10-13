@@ -50,7 +50,10 @@ def state(page):
     return json.loads(page.evaluate("localStorage.getItem('langanki.v1')"))
 
 
-def study_all(page, grade=3, max_cards=200, type_answers=True, on_card=None, wrong_every=0):
+GOT_IT = ".study__actions [data-autofocus][data-grade]"
+
+
+def study_all(page, grade=None, max_cards=200, type_answers=True, on_card=None, wrong_every=0):
     """Answer every card in the session. Returns how many of each direction were seen."""
     seen = {"r": 0, "p": 0}
     for i in range(max_cards):
@@ -77,7 +80,7 @@ def study_all(page, grade=3, max_cards=200, type_answers=True, on_card=None, wro
             if page.locator("[data-act=reveal]").count():
                 seen["r"] += 1
                 page.click("[data-act=reveal]")
-        page.click(f"[data-grade='{grade}']")
+        page.click(GOT_IT if grade is None else f"[data-grade='{grade}']")
     raise AssertionError("session never finished")
 
 
@@ -117,8 +120,12 @@ try:
         assert page.locator(".part").count() >= 1
         shot(page, "04-phone-card-back")
         page.screenshot(path=os.path.join(OUT, "04b-phone-card-back-full.png"), full_page=True)
+        # Timed grading: only "Missed it" and "Got it", and a new card tops out at Good.
+        assert page.locator(".study__actions [data-grade]").count() == 2
+        assert page.get_attribute(GOT_IT, "data-grade") == "3", "a new card answered fast counts as Good"
+        assert "Answered in" in page.inner_text(".timing")
         # Undo returns to the same card's front.
-        page.click("[data-grade='3']")
+        page.click(GOT_IT)
         page.click("[data-act=undo]")
         assert page.locator("[data-act=reveal]").count() == 1
         seen = study_all(page)
@@ -142,6 +149,10 @@ try:
             if is_prod and i < 40 and not os.path.exists(os.path.join(OUT, "07-phone-production.png")):
                 shot(pg, "07-phone-production")
 
+        page.wait_for_selector(".card")
+        page.click("[data-act=reveal]")
+        assert page.get_attribute(GOT_IT, "data-grade") == "4", "a review answered fast counts as Easy"
+        page.click(GOT_IT)
         seen = study_all(page, on_card=no_keyboard)
         print("day 4 seen", seen)
 
@@ -209,12 +220,15 @@ try:
         assert state(page)["settings"]["newPerDay"] == 11
         page.check("input[value=print]", force=True)
         assert state(page)["settings"]["kanaStyle"] == "print"
+        page.check("input[value=manual]", force=True)
+        assert state(page)["settings"]["grading"] == "manual"
         page.check("input[value=dark]", force=True)
         shot(page, "11-phone-settings-dark")
         page.click("[data-go=home]")
         shot(page, "12-phone-home-dark")
         page.click("[data-study=kata]")
         page.click("[data-act=reveal]")
+        assert page.locator(".grades [data-grade]").count() == 4, "manual grading shows all four grades"
         shot(page, "13-phone-card-dark")
         phone.close()
 
@@ -233,9 +247,9 @@ try:
         page.click("[data-study=kata]")
         page.wait_for_selector(".card")
         page.keyboard.press("Space")
-        assert page.locator(".grades").count() == 1, "Space reveals the answer"
+        assert page.locator(".timing").count() == 1, "Space reveals the answer"
         shot(page, "21-desktop-card-back")
-        page.keyboard.press("3")
+        page.keyboard.press("2")
         study_all(page)
         set_clock(page, 4 * DAY_MS)
         page.goto(BASE)
