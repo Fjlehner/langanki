@@ -11,6 +11,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 - **New cards:** 10 per day per script by default (hiragana and katakana separately), with the same allowance for writing cards. Adjustable and pausable per deck in Settings.
 - **Hiragana first:** katakana unlocks once the 46 basic hiragana have graduated, so the two scripts aren't mixed at the start. It can be started early from the overview.
 - **Word decks** unlock once all 46 base characters of a script have graduated. A word appears only when every character in it has.
+- **Progress on the overview:** learned characters by deck (with how many you can write), weak spots (characters missed after their first hour, forgotten after being learned, or read slowly) with a button to practice just those, and up next (the next new characters per deck, unlock milestones and the next review).
 - **Keep going when caught up:** "Learn 10 more new cards" raises today's new-card allowance for each open deck, and "Review early" studies up to 20 of the soonest-due cards ahead of schedule. Both appear on the overview and at the end of a session once nothing is due.
 - **Start over:** Settings can reset a started deck (and its word deck) on every device.
 - **Quiet mode:** recognition only, no sound, for places where audio isn't an option.
@@ -56,6 +57,7 @@ python3 tests/sync_e2e.py http://127.0.0.1:8787       # codes and sync across de
 | `public/js/scripts/japanese.js` | Hiragana and katakana data, pronunciation parts, word lists, keyboard layouts |
 | `public/js/scripts/index.js` | All scripts and decks; Korean, Hebrew and Hindi are listed as coming next |
 | `public/js/fsrs.js` | FSRS-5 scheduler and learning steps |
+| `public/js/progress.js` | Learned, weak spots and up next for the overview |
 | `public/js/study.js` | Which cards exist and are unlocked, daily limits, the study queue |
 | `public/js/store.js` | Local progress storage |
 | `public/js/sync.js` | Codes, saving to the server and merging two devices' progress |

@@ -10,6 +10,12 @@ import { DECKS, deckById, splitWord } from './scripts/index.js';
 
 const LEARN_AHEAD = 20 * 60 * 1000;
 
+// Answer-time thresholds for timed grading, also used to flag slow characters.
+export const TIMING = {
+  r: { easy: 3000, good: 8000, perExtra: 1500 }, // reading: time to Show answer
+  p: { easy: 6000, good: 15000, perExtra: 3000 }, // writing: time to Check, typing included
+};
+
 export const cardId = (deckId, itemId, dir) => `${deckId}:${itemId}:${dir}`;
 export function parseId(id) {
   const [deckId, itemId, dir] = id.split(':');
@@ -74,7 +80,7 @@ export function deckLocked(state, deck) {
 }
 
 // Is this (not yet started) card allowed to be introduced?
-function introducible(state, deck, card) {
+export function introducible(state, deck, card) {
   if (card.dir === 'p') return solid(state, deck.id, card.item.id);
   if (deck.kind === 'words') return wordReady(state, deck, card.item);
   return true;
@@ -160,7 +166,7 @@ function shuffle(arr) {
 // A study session over one or more decks. Queues are fixed at the start, except learning
 // cards, which are read live from the state so they come back after their short steps.
 export class Session {
-  constructor(state, deckIds, now, { quiet = false, ahead = false } = {}) {
+  constructor(state, deckIds, now, { quiet = false, ahead = false, ids = null } = {}) {
     this.deckIds = deckIds;
     this.quiet = quiet;
     this.ahead = ahead;
@@ -170,6 +176,12 @@ export class Session {
     this.lastId = null;
     this.sinceNew = 0;
     this.done = 0;
+    if (ids) {
+      // A chosen set of started cards (weak spots), studied whether or not they're due.
+      this.ahead = true;
+      this.reviews = ids.filter((id) => state.cards[id] && state.cards[id].st !== NEW && !(quiet && id.endsWith(':p')));
+      return;
+    }
     if (ahead) {
       // Study ahead: the soonest-due review cards, no new cards.
       this.reviews = reviewAheadIds(state, deckIds, now, 20, quiet);
@@ -231,7 +243,7 @@ export class Session {
     const due = pickLearning(now);
     if (due) return due;
     // Drop reviews that another device already did.
-    this.reviews = this.reviews.filter((id) => state.cards[id]?.st === REVIEW && (this.ahead ? state.cards[id].last < this.startedAt : state.cards[id].due <= now));
+    this.reviews = this.reviews.filter((id) => (this.ahead ? state.cards[id] && state.cards[id].st !== NEW && state.cards[id].last < this.startedAt : state.cards[id]?.st === REVIEW && state.cards[id].due <= now));
     this.fresh = this.fresh.filter((id) => !state.cards[id] || state.cards[id].st === NEW);
     const takeNew = this.fresh.length && (!this.reviews.length || this.sinceNew >= 3);
     if (takeNew) return this.fresh[0];

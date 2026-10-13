@@ -181,6 +181,19 @@ try:
         seen = study_all(page, on_card=review_easy, wrong_every=3)
         print("day 9 seen", seen)
         assert checked["easy"], "a fast review should have counted as Easy"
+
+        # Progress panels: learned, weak spots (from the missed writing cards), up next.
+        page.goto(BASE)
+        page.wait_for_selector(".prog")
+        assert page.locator(".prog__panel").count() == 3
+        assert page.locator(".chip-ch--learned, .chip-ch--strong").count() >= 10
+        assert page.locator(".weak li").count() > 0, "missed cards should show as weak spots"
+        assert page.locator(".chip-ch--next").count() > 0
+        shot(page, "06b-phone-progress")
+        page.locator(".prog").screenshot(path=os.path.join(OUT, "06c-phone-progress-panels.png"))
+        page.click("[data-act=practice-weak]")
+        page.wait_for_selector(".card")
+        study_all(page)
         assert seen["p"] > 0, "writing cards should appear after a passed review"
 
         # Quiet mode: no writing cards, no play buttons.
@@ -297,6 +310,7 @@ try:
         seen = study_all(page, on_card=desktop_prod)
         assert used_keyboard["done"], "a katakana writing card should have appeared"
         page.click("[data-go=home]")
+        page.locator(".prog").screenshot(path=os.path.join(OUT, "24-desktop-progress.png"))
         page.click("[data-browse=kata]")
         shot(page, "23-desktop-browse")
 

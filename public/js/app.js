@@ -1,9 +1,10 @@
 import { SCRIPTS, DECKS, deckById, splitWord } from './scripts/index.js';
 import { schedule, preview, formatWait, newCard, NEW, dayKey, DAY } from './fsrs.js';
 import { load, save, freshState, normalize, storageAvailable, bumpDaily, addLog, clearLocal } from './store.js';
-import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, freshBeyondLimit, reviewAheadIds, baseProgress, itemStatus, nextDue, cardId } from './study.js';
+import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, freshBeyondLimit, reviewAheadIds, TIMING, baseProgress, itemStatus, nextDue, cardId } from './study.js';
 import { canSpeak, speak, stopSpeaking, onVoices, voicesReady } from './speech.js';
 import { isMobileDevice, now } from './device.js';
+import { learnedByDeck, weakSpots, upNext } from './progress.js';
 import {
   apiAvailable, getCode, formatCode, restoreLink, normalizeCode, isValidCode, createProfile, fetchProfile, adoptCode,
   pull, push, rotateCode, eraseRemote, forgetCode, onStatus, getStatus, mergeStates,
@@ -260,6 +261,7 @@ function homeHTML() {
     ${anything ? '' : extraStudyHTML(t, true)}
     ${quietSwitch()}
   </section>
+  ${progressHTML(t)}
   <section class="script" aria-labelledby="ja-h">
     <div class="script__head"><h2 id="ja-h">${esc(ja.name)}</h2><span class="script__native" lang="ja">${esc(ja.native)}</span></div>
     <p class="tip">${esc(ja.intro)}</p>
@@ -269,6 +271,54 @@ function homeHTML() {
     <div class="script__head"><h2 id="soon-h">Coming next</h2></div>
     <div class="soon">${SCRIPTS.filter((s) => s.soon).map((s) => `<div class="soon__item"><span class="soon__native" lang="${s.id}">${esc(s.native)}</span><div><strong>${esc(s.name)}</strong><p class="muted">${esc(s.blurb)}</p></div></div>`).join('')}</div>
   </section>`;
+}
+
+// ---------- progress: learned, weak spots, up next ----------
+
+function progressHTML(t) {
+  const decks = JA_DECKS.map(deckById);
+  if (!Object.keys(state.cards).length) return '';
+  const learned = learnedByDeck(state, decks);
+  const weak = weakSpots(state, decks, t);
+  const next = upNext(state, decks, t);
+
+  const learnedHTML = learned.length
+    ? learned.map((g) => `<div class="prog__deck">
+        <div class="prog__deckhead"><strong>${esc(g.deck.name)}</strong><span class="muted">${g.items.length} of ${g.total}${g.writing ? ` · ${g.writing} can write` : ''}</span></div>
+        <div class="chips">${g.items.map((it) => `<span class="chip-ch chip-ch--${it.status}" title="${esc(it.romaji)}"><span lang="ja">${esc(it.label)}</span></span>`).join('')}</div>
+      </div>`).join('')
+    : '<p class="muted">Characters appear here once they’ve made it through their first short reviews.</p>';
+
+  const weakHTML = weak.length
+    ? `<ul class="weak">${weak.map((w) => `<li><span class="weak__ch" lang="ja">${esc(w.label)}</span><span class="weak__r">${esc(w.romaji)}</span><span class="weak__why">${esc(w.why)}</span></li>`).join('')}</ul>
+       <button class="btn btn--small" data-act="practice-weak">Practice these (${weak.reduce((n, w) => n + w.cardIds.length, 0)} cards)</button>`
+    : '<p class="muted">Nothing stands out yet. Characters you miss or read slowly will show up here.</p>';
+
+  const nextHTML = `${next.fresh.map((f) => `<div class="next">
+        <div class="prog__deckhead"><strong>${esc(f.deck.name)}</strong><span class="muted">${esc(f.groups.join(', '))}</span></div>
+        <div class="chips">${f.items.map((it) => `<span class="chip-ch chip-ch--next" title="${esc(it.romaji)}"><span lang="ja">${esc(it.char)}</span></span>`).join('')}</div>
+      </div>`).join('') || '<p class="muted">No new characters waiting today.</p>'}
+    ${next.milestones.map((m) => `<div class="milestone"><div class="prog__deckhead"><span><strong>${m.done} of ${m.total} basic ${esc(m.base)}</strong></span><span class="muted">${m.total - m.done} to go</span></div><p class="small muted">All ${m.total} unlock ${esc(m.unlocks)}.</p><div class="bar" aria-hidden="true"><span style="width:${(m.done / m.total) * 100}%"></span></div></div>`).join('')}
+    ${next.due ? `<p class="muted small">Next review ${whenText(next.due, t)}.</p>` : ''}`;
+
+  return `<section class="progress" aria-labelledby="prog-h">
+    <h2 id="prog-h" class="sr-only">Progress</h2>
+    <div class="prog">
+      <article class="prog__panel"><h3>Learned</h3>${learnedHTML}</article>
+      <article class="prog__panel"><h3>Weak spots</h3>${weakHTML}</article>
+      <article class="prog__panel"><h3>Up next</h3>${nextHTML}</article>
+    </div>
+  </section>`;
+}
+
+function practiceWeak() {
+  const ids = weakSpots(state, JA_DECKS.map(deckById), now()).flatMap((w) => w.cardIds);
+  session = new Session(state, JA_DECKS, now(), { quiet: state.settings.quiet, ids });
+  session.label = 'Weak spots';
+  session.scope = 'all';
+  undoStack = [];
+  view = null;
+  nextCard();
 }
 
 // Ways to keep going once today's cards are done, like Anki's custom study.
@@ -532,10 +582,6 @@ document.addEventListener('visibilitychange', () => {
 
 // A correct answer's grade from how long it took. Easy needs a card that's past learning,
 // so a first lucky guess doesn't send a brand-new character away for weeks.
-const TIMING = {
-  r: { easy: 3000, good: 8000, perExtra: 1500 }, // reading: seconds to Show answer
-  p: { easy: 6000, good: 15000, perExtra: 3000 }, // writing: seconds to Check, typing included
-};
 function timedGrade(card, deck, item, dir, ms) {
   const units = deck.kind === 'words' ? (splitWord(item.text, deckById(deck.requires)) || [item.text]).length : 1;
   const t = TIMING[dir];
@@ -910,6 +956,8 @@ app.addEventListener('click', async (e) => {
       return render();
     case 'learn-more':
       return learnMore();
+    case 'practice-weak':
+      return practiceWeak();
     case 'review-ahead':
       return startStudy('all', { ahead: true });
     case 'reveal':
