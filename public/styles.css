@@ -169,6 +169,10 @@ kbd { font: 600 0.7rem/1 var(--font-ui); padding: 3px 5px; border-radius: 4px; b
 .banner__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .code-text { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.05em; }
 .today { display: grid; gap: 14px; padding: 18px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); margin-bottom: 26px; }
+.extra { display: flex; flex-wrap: wrap; gap: 10px; }
+.extra .btn { flex: 1 1 220px; }
+.today .help { margin-top: -6px; }
+@media (min-width: 720px) { .today .extra, .today .help { grid-column: 1 / -1; } }
 .today__line { color: var(--muted); font-size: 1.05rem; margin-top: 4px; }
 .today .btn--big { width: 100%; }
 @media (min-width: 720px) {

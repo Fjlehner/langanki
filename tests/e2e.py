@@ -132,8 +132,17 @@ try:
         assert all(k.startswith("hira:") for k in state(page)["cards"]), "no katakana before hiragana"
         assert seen["r"] >= 10 and seen["p"] == 0, seen  # each new card is seen at both learning steps
         shot(page, "05-phone-finished")
-        s = state(page)
-        assert len([k for k in s["cards"] if k.startswith("hira:")]) == 10
+        # Caught up: learn more new cards today.
+        page.click("[data-act=learn-more]")
+        page.wait_for_selector(".card")
+        seen_more = study_all(page)
+        assert len([k for k in state(page)["cards"] if k.startswith("hira:")]) == 20, "learn more adds another 10"
+        page.click("[data-go=home]")
+        assert page.locator("[data-act=review-ahead]").count() == 1
+        shot(page, "05b-phone-caught-up")
+        page.click("[data-act=review-ahead]")
+        page.wait_for_selector(".card")
+        study_all(page)
 
         # Phone production cards never show the on-screen keyboard.
         # Day 4: reviews come back; production still locked until the review is passed.
@@ -149,19 +158,29 @@ try:
             if is_prod and i < 40 and not os.path.exists(os.path.join(OUT, "07-phone-production.png")):
                 shot(pg, "07-phone-production")
 
-        page.wait_for_selector(".card")
-        page.click("[data-act=reveal]")
-        assert page.get_attribute(GOT_IT, "data-grade") == "4", "a review answered fast counts as Easy"
-        page.click(GOT_IT)
-        seen = study_all(page, on_card=no_keyboard)
+        checked = {"easy": False}
+
+        def review_easy(pg, i, is_prod):
+            no_keyboard(pg, i, is_prod)
+            # Reviews answered fast count as Easy (new and learning cards top out at Good).
+            if not is_prod and pg.locator("[data-act=reveal]").count():
+                pg.click("[data-act=reveal]")
+                g = pg.get_attribute(GOT_IT, "data-grade")
+                if pg.locator(".tag--new").count():
+                    assert g == "3", "a new card answered fast counts as Good"
+                if g == "4":
+                    checked["easy"] = True
+
+        seen = study_all(page, on_card=review_easy)
         print("day 4 seen", seen)
 
         # Day 9: production cards are unlocked for items that passed a review.
         set_clock(page, 9 * DAY_MS)
         page.goto(BASE)
         page.click("[data-study=hira]")
-        seen = study_all(page, on_card=no_keyboard, wrong_every=3)
+        seen = study_all(page, on_card=review_easy, wrong_every=3)
         print("day 9 seen", seen)
+        assert checked["easy"], "a fast review should have counted as Easy"
         assert seen["p"] > 0, "writing cards should appear after a passed review"
 
         # Quiet mode: no writing cards, no play buttons.

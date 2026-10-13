@@ -1,7 +1,7 @@
 import { SCRIPTS, DECKS, deckById, splitWord } from './scripts/index.js';
 import { schedule, preview, formatWait, newCard, NEW, dayKey, DAY } from './fsrs.js';
 import { load, save, freshState, normalize, storageAvailable, bumpDaily, addLog, clearLocal } from './store.js';
-import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, baseProgress, itemStatus, nextDue, cardId } from './study.js';
+import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, freshBeyondLimit, reviewAheadIds, baseProgress, itemStatus, nextDue, cardId } from './study.js';
 import { canSpeak, speak, stopSpeaking, onVoices, voicesReady } from './speech.js';
 import { isMobileDevice, now } from './device.js';
 import {
@@ -256,7 +256,8 @@ function homeHTML() {
       <h1 tabindex="-1">${anything ? 'Today' : 'All caught up'}</h1>
       <p class="today__line">${anything ? `${plural(dueAll, 'card')} to review and ${plural(tot.fresh, 'new card')}.` : nextDueLine(t)}</p>
     </div>
-    <button class="btn btn--primary btn--big" data-study="all" ${anything ? '' : 'disabled'}>Study now</button>
+    ${anything ? '<button class="btn btn--primary btn--big" data-study="all">Study now</button>' : ''}
+    ${anything ? '' : extraStudyHTML(t, true)}
     ${quietSwitch()}
   </section>
   <section class="script" aria-labelledby="ja-h">
@@ -268,6 +269,31 @@ function homeHTML() {
     <div class="script__head"><h2 id="soon-h">Coming next</h2></div>
     <div class="soon">${SCRIPTS.filter((s) => s.soon).map((s) => `<div class="soon__item"><span class="soon__native" lang="${s.id}">${esc(s.native)}</span><div><strong>${esc(s.name)}</strong><p class="muted">${esc(s.blurb)}</p></div></div>`).join('')}</div>
   </section>`;
+}
+
+// Ways to keep going once today's cards are done, like Anki's custom study.
+function extraStudyHTML(t, big = false) {
+  const more = JA_DECKS.reduce((n, id) => n + freshBeyondLimit(state, deckById(id), t), 0);
+  const ahead = reviewAheadIds(state, JA_DECKS, t, 20).length;
+  if (!more && !ahead) return '';
+  const step = state.settings.newPerDay || 10;
+  const cls = big ? 'btn btn--primary btn--big' : 'btn btn--primary';
+  return `<div class="extra">
+      ${more ? `<button class="${cls}" data-act="learn-more">Learn ${Math.min(step, more)} more new cards</button>` : ''}
+      ${ahead ? `<button class="${more ? 'btn' + (big ? ' btn--big' : '') : cls}" data-act="review-ahead">Review early (${ahead})</button>` : ''}
+    </div>
+    <p class="help">${more ? 'Learning more raises today’s new-card allowance. ' : ''}${ahead ? 'Reviewing early brings back the cards that are due soonest; they’re rescheduled from today.' : ''}</p>`;
+}
+
+function learnMore() {
+  const t = now();
+  const step = state.settings.newPerDay || 10;
+  for (const id of JA_DECKS) {
+    const deck = deckById(id);
+    if (freshBeyondLimit(state, deck, t)) bumpDaily(state, dayKey(t), `${id}:extra`, step);
+  }
+  commit();
+  startStudy('all');
 }
 
 function nextDueLine(t) {
@@ -290,10 +316,10 @@ let session = null;
 let view = null; // { id, revealed, typed, correct, override, wasNew }
 let undoStack = [];
 
-function startStudy(which) {
+function startStudy(which, { ahead = false } = {}) {
   const ids = which === 'all' ? JA_DECKS : [which];
-  session = new Session(state, ids, now(), { quiet: state.settings.quiet });
-  session.label = which === 'all' ? 'Japanese' : deckById(which).name;
+  session = new Session(state, ids, now(), { quiet: state.settings.quiet, ahead });
+  session.label = ahead ? 'Review early' : which === 'all' ? 'Japanese' : deckById(which).name;
   session.scope = which;
   undoStack = [];
   view = null;
@@ -591,9 +617,10 @@ function finishedHTML() {
     <p class="lede">${screen.done ? `You answered ${plural(screen.done, 'card')}.` : 'There are no cards due here.'} ${next ? `The next card comes back ${whenText(next, t)}.` : ''}</p>
     ${state.settings.quiet ? '<p class="muted">Quiet mode is on, so writing cards were skipped. Turn it off when you can use sound to practice writing too.</p>' : ''}
     <div class="actions">
-      <button class="btn btn--primary" data-go="home">Back to overview</button>
-      ${more ? `<button class="btn" data-study="all">Keep studying (${more})</button>` : ''}
+      ${more ? `<button class="btn btn--primary" data-study="all">Keep studying (${more})</button>` : ''}
+      <button class="btn" data-go="home">Back to overview</button>
     </div>
+    ${more ? '' : extraStudyHTML(t)}
   </section>`;
 }
 
@@ -881,6 +908,10 @@ app.addEventListener('click', async (e) => {
       state.settings.unlocked = { ...state.settings.unlocked, [d.deck]: true };
       commit();
       return render();
+    case 'learn-more':
+      return learnMore();
+    case 'review-ahead':
+      return startStudy('all', { ahead: true });
     case 'reveal':
       return reveal();
     case 'check':
@@ -982,7 +1013,7 @@ function toggleQuietInStudy() {
   state.settings.quiet = !state.settings.quiet;
   commit();
   const done = session.done;
-  session = Object.assign(new Session(state, session.deckIds, now(), { quiet: state.settings.quiet }), { label: session.label, scope: session.scope });
+  session = Object.assign(new Session(state, session.deckIds, now(), { quiet: state.settings.quiet, ahead: session.ahead }), { label: session.label, scope: session.scope });
   session.done = done;
   undoStack = [];
   if (state.settings.quiet && view && parseId(view.id).dir === 'p') return nextCard();

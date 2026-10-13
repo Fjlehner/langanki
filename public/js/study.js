@@ -84,8 +84,35 @@ const newKey = (deckId, dir) => `${deckId}:${dir === 'p' ? 'pnew' : 'new'}`;
 
 export function newLeftToday(state, deck, dir, now) {
   if (state.settings.paused?.[deck.id]) return 0;
-  const used = state.daily[dayKey(now)]?.[newKey(deck.id, dir)] || 0;
-  return Math.max(0, state.settings.newPerDay - used);
+  const today = state.daily[dayKey(now)] || {};
+  const used = today[newKey(deck.id, dir)] || 0;
+  return Math.max(0, state.settings.newPerDay + (today[`${deck.id}:extra`] || 0) - used);
+}
+
+// New cards a deck could introduce today if its daily allowance were raised.
+export function freshBeyondLimit(state, deck, now, quiet = state.settings.quiet) {
+  if (deckLocked(state, deck) || state.settings.paused?.[deck.id]) return 0;
+  let r = 0, p = 0;
+  for (const c of deckCards(deck)) {
+    if (quiet && c.dir === 'p') continue;
+    const card = state.cards[c.id];
+    if ((!card || card.st === NEW) && introducible(state, deck, c)) c.dir === 'p' ? p++ : r++;
+  }
+  return Math.max(0, r - newLeftToday(state, deck, 'r', now)) + Math.max(0, p - newLeftToday(state, deck, 'p', now));
+}
+
+// Cards in review that aren't due yet, soonest first, for studying ahead.
+export function reviewAheadIds(state, deckIds, now, limit = 20, quiet = state.settings.quiet) {
+  const out = [];
+  for (const deck of deckIds.map(deckById)) {
+    if (deckLocked(state, deck)) continue;
+    for (const c of deckCards(deck)) {
+      if (quiet && c.dir === 'p') continue;
+      const card = state.cards[c.id];
+      if (card && card.st === REVIEW && card.due > now) out.push({ id: c.id, due: card.due });
+    }
+  }
+  return out.sort((a, b) => a.due - b.due).slice(0, limit).map((x) => x.id);
 }
 
 // Counts for one deck at time `now`.
@@ -133,14 +160,21 @@ function shuffle(arr) {
 // A study session over one or more decks. Queues are fixed at the start, except learning
 // cards, which are read live from the state so they come back after their short steps.
 export class Session {
-  constructor(state, deckIds, now, { quiet = false } = {}) {
+  constructor(state, deckIds, now, { quiet = false, ahead = false } = {}) {
     this.deckIds = deckIds;
     this.quiet = quiet;
+    this.ahead = ahead;
+    this.startedAt = now;
     this.reviews = [];
     this.fresh = [];
     this.lastId = null;
     this.sinceNew = 0;
     this.done = 0;
+    if (ahead) {
+      // Study ahead: the soonest-due review cards, no new cards.
+      this.reviews = reviewAheadIds(state, deckIds, now, 20, quiet);
+      return;
+    }
     for (const deck of deckIds.map(deckById)) {
       if (deckLocked(state, deck)) continue;
       const freshR = [], freshP = [];
@@ -197,7 +231,7 @@ export class Session {
     const due = pickLearning(now);
     if (due) return due;
     // Drop reviews that another device already did.
-    this.reviews = this.reviews.filter((id) => state.cards[id]?.st === REVIEW && state.cards[id].due <= now);
+    this.reviews = this.reviews.filter((id) => state.cards[id]?.st === REVIEW && (this.ahead ? state.cards[id].last < this.startedAt : state.cards[id].due <= now));
     this.fresh = this.fresh.filter((id) => !state.cards[id] || state.cards[id].st === NEW);
     const takeNew = this.fresh.length && (!this.reviews.length || this.sinceNew >= 3);
     if (takeNew) return this.fresh[0];
