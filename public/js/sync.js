@@ -225,5 +225,13 @@ export function mergeStates(local, remote) {
   const seen = new Map();
   for (const e of [...(remote.log || []), ...(local.log || [])]) seen.set(`${e.at}|${e.id}`, e);
   out.log = [...seen.values()].sort((x, y) => x.at - y.at).slice(-MAX_LOG);
+
+  // A deck reset on either device wins over anything reviewed before it.
+  out.resets = { ...(remote.resets || {}) };
+  for (const [deck, at] of Object.entries(local.resets || {})) out.resets[deck] = Math.max(at, out.resets[deck] || 0);
+  for (const [deck, at] of Object.entries(out.resets)) {
+    for (const [id, card] of Object.entries(out.cards)) if (id.startsWith(`${deck}:`) && (card.last || 0) <= at) delete out.cards[id];
+    out.log = out.log.filter((e) => !(e.id.startsWith(`${deck}:`) && e.at <= at));
+  }
   return out;
 }

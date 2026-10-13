@@ -240,3 +240,18 @@ export function itemStatus(state, deck, item) {
 }
 
 export { dayStart, DAY };
+
+// Erase a character deck and its word deck. The reset time is kept so that, when two
+// devices merge, progress from before the reset is dropped instead of coming back.
+export function resetDeck(state, deckId, now) {
+  const ids = [deckId, ...DECKS.filter((d) => d.requires === deckId).map((d) => d.id)];
+  state.resets = { ...(state.resets || {}) };
+  for (const id of ids) {
+    state.resets[id] = now;
+    for (const k of Object.keys(state.cards)) if (k.startsWith(`${id}:`)) delete state.cards[k];
+    for (const day of Object.values(state.daily)) for (const k of Object.keys(day)) if (k.startsWith(`${id}:`)) delete day[k];
+    if (state.settings.unlocked) delete state.settings.unlocked[id];
+    if (state.settings.paused) delete state.settings.paused[id];
+  }
+  state.log = state.log.filter((e) => !ids.includes(e.id.split(':')[0]));
+}

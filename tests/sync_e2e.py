@@ -88,13 +88,27 @@ with sync_playwright() as p:
     a.wait_for_function("() => Object.keys(JSON.parse(localStorage.getItem('langanki.v1')).cards).some(k => k.startsWith('kata:'))", timeout=10000)
     assert len(cards(a, "kata:")) == 10
 
+    # B starts katakana over; A drops its katakana on the next sync instead of restoring it.
+    b.goto(BASE + "/")
+    b.click("[data-go=settings]")
+    b.once("dialog", lambda d: d.accept())
+    b.click("[data-act=reset-deck][data-deck=kata]")
+    b.wait_for_selector(".flash")
+    wait_saved(b)
+    a.goto(BASE + "/")
+    a.wait_for_function("() => !Object.keys(JSON.parse(localStorage.getItem('langanki.v1')).cards).some(k => k.startsWith('kata:'))", timeout=10000)
+    assert len(cards(a, "hira:")) == 10, "hiragana must survive the katakana reset"
+    b.goto(BASE + "/")
+    b.wait_for_timeout(1500)
+    assert len(cards(b, "kata:")) == 0, "the reset must not come back from A"
+
     # Device C uses the restore link.
     c = browser.new_context().new_page()
     watch(c, "C")
     c.goto(BASE + "/#code=" + code)
     c.wait_for_selector(".today")
     assert "#code" not in c.url, "the code must be removed from the address bar"
-    assert len(cards(c, "hira:")) == 10 and len(cards(c, "kata:")) == 10
+    assert len(cards(c, "hira:")) == 10 and len(cards(c, "kata:")) == 0
 
     # Wrong code shows an error.
     d = browser.new_context().new_page()

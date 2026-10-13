@@ -22,6 +22,7 @@ export function freshState() {
     cards: {}, // card id -> FSRS card
     daily: {}, // 'YYYY-MM-DD' -> { 'hira:new': 3, 'hira:pnew': 1, reviews: 40 }
     log: [], // { at, id, g, ms }
+    resets: {}, // deck id -> time the deck was last reset
   };
 }
 

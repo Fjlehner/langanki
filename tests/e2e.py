@@ -279,6 +279,17 @@ try:
         page.click("[data-go=home]")
         page.click("[data-browse=kata]")
         shot(page, "23-desktop-browse")
+
+        # Start katakana over: its cards go and it locks again.
+        page.click("[data-go=settings]")
+        page.once("dialog", lambda d: d.accept())
+        page.click("[data-act=reset-deck][data-deck=kata]")
+        page.wait_for_selector(".flash")
+        s = state(page)
+        assert not any(k.startswith("kata") for k in s["cards"]), "katakana cards should be gone"
+        assert "kata" in s["resets"]
+        page.click("[data-go=home]")
+        assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1, "katakana should be locked again"
         desk.close()
         browser.close()
 finally:

@@ -1,7 +1,7 @@
 import { SCRIPTS, DECKS, deckById, splitWord } from './scripts/index.js';
 import { schedule, preview, formatWait, newCard, NEW, dayKey, DAY } from './fsrs.js';
 import { load, save, freshState, normalize, storageAvailable, bumpDaily, addLog, clearLocal } from './store.js';
-import { Session, parseId, deckCounts, deckLocked, lockedBy, baseProgress, itemStatus, nextDue, cardId } from './study.js';
+import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, baseProgress, itemStatus, nextDue, cardId } from './study.js';
 import { canSpeak, speak, stopSpeaking, onVoices, voicesReady } from './speech.js';
 import { isMobileDevice, now } from './device.js';
 import {
@@ -693,6 +693,7 @@ function settingsHTML() {
         ${decks.map((d) => `<label class="check"><input type="checkbox" data-pause="${d.id}" ${s.paused?.[d.id] ? 'checked' : ''}> ${esc(d.name)}</label>`).join('')}
         <p class="help">Reviews continue for paused decks.</p>
       </fieldset>
+      ${startOverHTML(decks)}
     </section>
     <section class="panel">
       <h2>Sound and display</h2>
@@ -717,6 +718,17 @@ function settingsHTML() {
       ${codeManageHTML()}
     </section>
   </div>`;
+}
+
+// Decks with progress can be erased and started again (a character deck takes its word deck with it).
+function startOverHTML(decks) {
+  const started = decks.filter((d) => d.kind === 'chars' && Object.keys(state.cards).some((k) => k.startsWith(`${d.id}:`)));
+  if (!started.length) return '';
+  return `<div class="field">
+      <span class="field__label">Start a deck over</span>
+      <div class="actions">${started.map((d) => `<button class="btn btn--small btn--danger" data-act="reset-deck" data-deck="${d.id}">Reset ${esc(d.name.toLowerCase())}</button>`).join('')}</div>
+      <p class="help">Erases that deck’s progress on every device, including its word deck. ${started.some((d) => d.after) ? 'Katakana locks again until the basic hiragana are learned.' : ''}</p>
+    </div>`;
 }
 
 function codeManageHTML() {
@@ -856,6 +868,14 @@ app.addEventListener('click', async (e) => {
       screen.restore = true;
       render();
       return document.getElementById('restore-code')?.focus();
+    case 'reset-deck': {
+      const deck = deckById(d.deck);
+      if (!confirm(`Erase all your ${deck.name.toLowerCase()} progress, including ${deck.name.toLowerCase()} words? This can’t be undone.`)) return;
+      resetDeck(state, deck.id, now());
+      commit();
+      flash = `${deck.name} has been reset.`;
+      return render();
+    }
     case 'unlock-early':
       if (!confirm(`Start ${deckById(d.deck).name.toLowerCase()} now? Learning both scripts at once is harder, which is why it normally waits until the basic hiragana are learned.`)) return;
       state.settings.unlocked = { ...state.settings.unlocked, [d.deck]: true };

@@ -11,6 +11,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 - **New cards:** 10 per day per script by default (hiragana and katakana separately), with the same allowance for writing cards. Adjustable and pausable per deck in Settings.
 - **Hiragana first:** katakana unlocks once the 46 basic hiragana have graduated, so the two scripts aren't mixed at the start. It can be started early from the overview.
 - **Word decks** unlock once all 46 base characters of a script have graduated. A word appears only when every character in it has.
+- **Start over:** Settings can reset a started deck (and its word deck) on every device.
 - **Quiet mode:** recognition only, no sound, for places where audio isn't an option.
 - **Typing:** phones and tablets use their own language keyboard. Desktops also get an on-screen kana keyboard laid out like a kana table.
 - **Audio:** the browser's built-in voices. If a device has no voice for a language, play buttons are hidden. Recorded clips can be dropped in later through `RECORDINGS` in `public/js/speech.js`.
