@@ -1,7 +1,7 @@
 import { SCRIPTS, DECKS, deckById, splitWord } from './scripts/index.js';
 import { schedule, preview, formatWait, newCard, NEW, dayKey, DAY } from './fsrs.js';
 import { load, save, freshState, normalize, storageAvailable, bumpDaily, addLog, clearLocal } from './store.js';
-import { Session, parseId, deckCounts, deckLocked, baseProgress, itemStatus, nextDue, cardId } from './study.js';
+import { Session, parseId, deckCounts, deckLocked, lockedBy, baseProgress, itemStatus, nextDue, cardId } from './study.js';
 import { canSpeak, speak, stopSpeaking, onVoices, voicesReady } from './speech.js';
 import { isMobileDevice, now } from './device.js';
 import {
@@ -210,13 +210,17 @@ function quietSwitch(id = 'quiet') {
 function deckCardHTML(deck, t) {
   const c = deckCounts(state, deck, t);
   if (c.locked) {
-    const base = deckById(deck.requires);
+    const base = lockedBy(deck);
     const p = baseProgress(state, base);
+    const early = deck.kind === 'chars'
+      ? `<div class="deck__actions"><button class="btn" data-act="unlock-early" data-deck="${deck.id}">Start ${esc(deck.name.toLowerCase())} now</button></div>`
+      : '';
     return `<article class="deck deck--locked">
       <div class="deck__head"><h3>${esc(deck.name)}</h3><span class="deck__native" lang="ja">${esc(deck.native)}</span></div>
       <p class="muted">${esc(deck.blurb)}</p>
       <p class="deck__lock">Unlocks when you’ve learned all ${p.total} basic ${esc(base.name.toLowerCase())}: ${p.done} of ${p.total} so far.</p>
       <div class="bar" aria-hidden="true"><span style="width:${(p.done / p.total) * 100}%"></span></div>
+      ${early}
     </article>`;
   }
   const paused = state.settings.paused?.[deck.id];
@@ -792,6 +796,11 @@ app.addEventListener('click', async (e) => {
       screen.restore = true;
       render();
       return document.getElementById('restore-code')?.focus();
+    case 'unlock-early':
+      if (!confirm(`Start ${deckById(d.deck).name.toLowerCase()} now? Learning both scripts at once is harder, which is why it normally waits until the basic hiragana are learned.`)) return;
+      state.settings.unlocked = { ...state.settings.unlocked, [d.deck]: true };
+      commit();
+      return render();
     case 'reveal':
       return reveal();
     case 'check':

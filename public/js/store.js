@@ -16,6 +16,7 @@ export function freshState() {
       kanaStyle: 'textbook', // textbook (handwritten forms) | print
       theme: 'auto',
       paused: {}, // deck id -> true when new cards are paused
+      unlocked: {}, // deck id -> true when started before its unlock milestone
     },
     cards: {}, // card id -> FSRS card
     daily: {}, // 'YYYY-MM-DD' -> { 'hira:new': 3, 'hira:pnew': 1, reviews: 40 }
@@ -37,7 +38,7 @@ export function load() {
 
 export function normalize(s) {
   const base = freshState();
-  return { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), paused: { ...(s.settings?.paused || {}) } } };
+  return { ...base, ...s, settings: { ...base.settings, ...(s.settings || {}), paused: { ...(s.settings?.paused || {}) }, unlocked: { ...(s.settings?.unlocked || {}) } } };
 }
 
 export function save(state) {

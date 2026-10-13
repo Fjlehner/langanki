@@ -102,7 +102,10 @@ try:
         page.click("[data-act=start]")
         page.wait_for_selector(".today")
         shot(page, "02-phone-home")
-        assert "10 new cards" in page.inner_text(".today__line").replace("20 new", "x") or True
+        # Katakana waits for hiragana: only hiragana is offered at the start.
+        assert page.locator("[data-study=kata]").count() == 0, "katakana should start locked"
+        assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1
+        assert "10 new cards" in page.inner_text(".today__line")
 
         # Day 0: first study session.
         page.click("[data-study=hira]")
@@ -119,6 +122,7 @@ try:
         page.click("[data-act=undo]")
         assert page.locator("[data-act=reveal]").count() == 1
         seen = study_all(page)
+        assert all(k.startswith("hira:") for k in state(page)["cards"]), "no katakana before hiragana"
         assert seen["r"] >= 10 and seen["p"] == 0, seen  # each new card is seen at both learning steps
         shot(page, "05-phone-finished")
         s = state(page)
@@ -223,7 +227,9 @@ try:
         page.click("[data-act=start]")
         page.wait_for_selector(".today")
         shot(page, "20-desktop-home")
-        page.keyboard.press("Tab")
+        page.once("dialog", lambda d: d.accept())
+        page.click("[data-act=unlock-early][data-deck=kata]")
+        page.wait_for_selector("[data-study=kata]")
         page.click("[data-study=kata]")
         page.wait_for_selector(".card")
         page.keyboard.press("Space")

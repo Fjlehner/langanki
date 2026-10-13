@@ -278,7 +278,7 @@ const hiragana = {
   groups: hiraganaGroups(), keyboard: HIRA_KEYBOARD,
 };
 const katakana = {
-  id: 'kata', script: 'ja', kind: 'chars', name: 'Katakana', native: 'カタカナ', lang: 'ja-JP', font: 'ja',
+  id: 'kata', script: 'ja', kind: 'chars', name: 'Katakana', native: 'カタカナ', lang: 'ja-JP', font: 'ja', after: 'hira',
   blurb: 'The same sounds in angular shapes, used for foreign words and names.',
   groups: katakanaGroups(), keyboard: KATA_KEYBOARD,
 };

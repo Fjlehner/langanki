@@ -34,6 +34,7 @@ LangAnki is a free, browser-based flashcard app for learning writing systems, bu
 - **Phone first**, still comfortable on desktop.
 - **One code per person** covering all scripts, separate from Unlearn codes.
 - **Japanese first**, built so the other scripts are mostly data.
+- **Hiragana before katakana.** Katakana stays locked until the 46 basic hiragana are learned, so the two scripts aren't mixed at the start. The locked deck has a "Start katakana now" button, and any katakana progress keeps it unlocked.
 
 ## How it's built
 
@@ -41,6 +42,7 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 
 - Each script is a module in `public/js/scripts/` exporting decks. A character deck has `groups` of items `{ id, char, romaji, ipa, parts, notes, hint, say, noProd }`; `parts` are the consonant, glide and vowel pieces with `type`, `how`, `en`, `es`. A word deck has `requires` (its character deck) and items `{ text, romaji, en, es }`. Adding a script means writing its module and adding it to `scripts/index.js`.
 - `keyboard` on a character deck lists rows of 5 for the desktop on-screen keyboard (shown as a table, rows across and vowels down).
+- A character deck can have `after` (another deck id): it stays locked until that deck's base characters have graduated, unless `settings.unlocked[deckId]` is set or the deck already has cards.
 - Card ids are `deck:item:dir`, with `dir` `r` or `p`.
 - FSRS-5 default parameters; learning steps 1 and 10 minutes, relearning 10 minutes; day rolls over at 4 a.m. Production unlocks when the recognition card is in review with at least 3 reps (graduated, then passed a later review).
 - Progress: localStorage key `langanki.v1`. Sync API and code format are the same as Unlearn's, with header `X-LangAnki-Code` and hash prefix `langanki:`. Merging keeps each card's most recently reviewed copy.

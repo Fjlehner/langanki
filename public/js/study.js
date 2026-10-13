@@ -59,8 +59,18 @@ export function deckCards(deck) {
   return out;
 }
 
+// What a locked deck is waiting for: the 46 base characters of this other deck.
+export const lockedBy = (deck) => deckById(deck.kind === 'words' ? deck.requires : deck.after);
+
+// Katakana waits for hiragana, so the two scripts aren't mixed at the start. Starting it
+// early from the overview, or any progress already in it, unlocks it.
 export function deckLocked(state, deck) {
-  return deck.kind === 'words' && !wordsUnlocked(state, deck);
+  if (deck.kind === 'words') return !wordsUnlocked(state, deck);
+  if (!deck.after || state.settings.unlocked?.[deck.id]) return false;
+  const base = deckById(deck.after);
+  if (base.items.filter((it) => it.base).every((it) => recognized(state, base.id, it.id))) return false;
+  const prefix = `${deck.id}:`;
+  return !Object.keys(state.cards).some((k) => k.startsWith(prefix));
 }
 
 // Is this (not yet started) card allowed to be introduced?

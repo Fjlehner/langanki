@@ -76,6 +76,8 @@ with sync_playwright() as p:
     b.click(".restore button[type=submit]")
     b.wait_for_selector(".today")
     assert cards(b, "hira:") == a_cards, "B should have A's cards"
+    b.once("dialog", lambda d: d.accept())
+    b.click("[data-act=unlock-early][data-deck=kata]")
     study(b, "kata")
     b.click("[data-go=home]")
     wait_saved(b)
