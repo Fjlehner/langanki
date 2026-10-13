@@ -1,2 +1,63 @@
-# langanki
-Anki-style flashcard system for learning Japanese, Korean, and Hindi writing systems 
+# LangAnki
+
+Anki-style flashcards for learning writing systems: Japanese hiragana and katakana now, with Korean hangul, Hebrew and Hindi (Devanagari) to follow. Every character comes with a pronunciation guide: IPA, a consonant and vowel breakdown, and the closest sounds in English and Spanish.
+
+## What's in this build
+
+- **Decks:** hiragana and katakana (base characters, voiced forms, combinations like きゃ, small っ, long vowels, and katakana sounds for foreign words), plus a hiragana word deck and a katakana word deck with meanings in English and Spanish.
+- **Two directions:** a recognition card (see the character, recall the sound) and a writing card (read or hear the sound, type the character). A writing card unlocks after its recognition card has graduated and been remembered at a later review.
+- **Self-grading:** Again, Hard, Good, Easy, with the wait for each shown under the button. Writing cards are checked automatically; a wrong answer is graded Again, with an override for typos.
+- **Scheduling:** FSRS-5 (the scheduler in current Anki) with Anki-style learning steps (1 and 10 minutes, 10 minutes after a lapse). The study day rolls over at 4 a.m. Target retention is 90% by default.
+- **New cards:** 10 per day per script by default (hiragana and katakana separately), with the same allowance for writing cards. Adjustable and pausable per deck in Settings.
+- **Word decks** unlock once all 46 base characters of a script have graduated. A word appears only when every character in it has.
+- **Quiet mode:** recognition only, no sound, for places where audio isn't an option.
+- **Typing:** phones and tablets use their own language keyboard. Desktops also get an on-screen kana keyboard laid out like a kana table.
+- **Audio:** the browser's built-in voices. If a device has no voice for a language, play buttons are hidden. Recorded clips can be dropped in later through `RECORDINGS` in `public/js/speech.js`.
+- **Codes instead of accounts:** a 10-character code saves progress on the server and opens it on other devices, with restore links, replacing and erasing.
+
+## Run it locally
+
+No build step. The site lives in `public/`:
+
+```sh
+cd public && python3 -m http.server 8000
+```
+
+Then open http://localhost:8000. Without the Worker, progress stays on the device and codes are unavailable.
+
+## Deploy on Cloudflare
+
+The site deploys as the Cloudflare Worker `langanki` (see `wrangler.jsonc`). It serves the static files in `public/`, and `src/worker.js` answers `/api/*` using the D1 database `langanki`. With Workers Builds connected to this repository, every push to `main` redeploys it with `npx wrangler deploy`. No build command is needed.
+
+To run everything locally with a local database:
+
+```sh
+npx wrangler d1 execute langanki --local --file schema.sql
+npx wrangler dev --port 8787
+```
+
+## Tests
+
+```sh
+pip install playwright && python3 -m playwright install chromium
+python3 tests/e2e.py                                  # phone and desktop walk-through, several simulated days
+python3 tests/sync_e2e.py http://127.0.0.1:8787       # codes and sync across devices, against wrangler dev
+```
+
+## Files
+
+| Path | What it does |
+| --- | --- |
+| `public/index.html`, `public/styles.css` | Page shell and all styling, light and dark |
+| `public/js/app.js` | Screens, study player, settings, codes and sync wiring |
+| `public/js/scripts/japanese.js` | Hiragana and katakana data, pronunciation parts, word lists, keyboard layouts |
+| `public/js/scripts/index.js` | All scripts and decks; Korean, Hebrew and Hindi are listed as coming next |
+| `public/js/fsrs.js` | FSRS-5 scheduler and learning steps |
+| `public/js/study.js` | Which cards exist and are unlocked, daily limits, the study queue |
+| `public/js/store.js` | Local progress storage |
+| `public/js/sync.js` | Codes, saving to the server and merging two devices' progress |
+| `public/js/speech.js` | Pronunciation audio |
+| `public/js/device.js` | Phone versus desktop detection, and a test clock |
+| `src/worker.js` | Sync API on Cloudflare |
+| `schema.sql` | Database tables |
+| `wrangler.jsonc` | Cloudflare deploy settings |
