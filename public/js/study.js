@@ -6,7 +6,7 @@
 // characters have graduated, and each word appears once all of its characters have.
 
 import { NEW, LEARNING, REVIEW, RELEARNING, dayKey, dayStart, DAY } from './fsrs.js';
-import { DECKS, deckById, splitWord } from './scripts/index.js';
+import { DECKS, deckById, wordNeeds } from './scripts/index.js';
 
 const LEARN_AHEAD = 20 * 60 * 1000;
 
@@ -46,13 +46,8 @@ export function baseProgress(state, deck) {
 }
 
 function wordReady(state, wordDeck, word) {
-  const charDeck = deckById(wordDeck.requires);
-  const units = splitWord(word.text, charDeck);
-  if (!units) return false;
-  return units.every((u) => {
-    const item = charDeck.items.find((it) => it.char === u);
-    return item && recognized(state, charDeck.id, item.id);
-  });
+  const needs = wordNeeds(wordDeck, word.text);
+  return !!needs && needs.every((id) => id && recognized(state, wordDeck.requires, id));
 }
 
 // All cards in a deck, in teaching order: { id, dir, item }.
@@ -82,6 +77,7 @@ export function deckLocked(state, deck) {
 // Is this (not yet started) card allowed to be introduced?
 export function introducible(state, deck, card) {
   if (card.dir === 'p') return solid(state, deck.id, card.item.id);
+  if (card.item.needs) return card.item.needs.every((id) => recognized(state, deck.needsDeck, id));
   if (deck.kind === 'words') return wordReady(state, deck, card.item);
   return true;
 }

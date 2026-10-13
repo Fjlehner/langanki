@@ -1,8 +1,10 @@
 # LangAnki
 
-Anki-style flashcards for learning writing systems: Japanese hiragana and katakana now, with Korean hangul, Hebrew and Hindi (Devanagari) to follow. Every character comes with a pronunciation guide: IPA, a consonant and vowel breakdown, and the closest sounds in English and Spanish.
+Anki-style flashcards for learning writing systems: Japanese hiragana and katakana and Korean Hangul now, with Hebrew and Hindi (Devanagari) to follow. Every character comes with a pronunciation guide: IPA, a consonant and vowel breakdown, and the closest sounds in English and Spanish.
 
 ## What's in this build
+
+- **Korean:** a Hangul letters deck (14 basic and 5 tense consonants, 21 vowels, each with letter name and its sound at the start and end of a block), a syllable-blocks deck (156 blocks, from simple pairs to finals and double finals) that unlocks after the 24 basic letters, and a Korean words deck. Romanization is Revised Romanization; word cards show block-by-block spelling and note sound changes. Desktop gets a two-set (dubeolsik) on-screen keyboard that composes blocks as you type. Korean doesn't depend on Japanese progress.
 
 - **Decks:** hiragana and katakana (base characters, voiced forms, combinations like きゃ, small っ, long vowels, and katakana sounds for foreign words), plus a hiragana word deck and a katakana word deck with meanings in English and Spanish.
 - **Two directions:** a recognition card (see the character, recall the sound) and a writing card (read or hear the sound, type the character). A writing card unlocks after its recognition card has graduated and been remembered at a later review.
@@ -55,7 +57,8 @@ python3 tests/sync_e2e.py http://127.0.0.1:8787       # codes and sync across de
 | `public/index.html`, `public/styles.css` | Page shell and all styling, light and dark |
 | `public/js/app.js` | Screens, study player, settings, codes and sync wiring |
 | `public/js/scripts/japanese.js` | Hiragana and katakana data, pronunciation parts, word lists, keyboard layouts |
-| `public/js/scripts/index.js` | All scripts and decks; Korean, Hebrew and Hindi are listed as coming next |
+| `public/js/scripts/korean.js` | Hangul letters, syllable blocks and words; block composition and romanization |
+| `public/js/scripts/index.js` | All scripts and decks, study scopes and word helpers; Hebrew and Hindi are listed as coming next |
 | `public/js/fsrs.js` | FSRS-5 scheduler and learning steps |
 | `public/js/progress.js` | Learned, weak spots and up next for the overview |
 | `public/js/study.js` | Which cards exist and are unlocked, daily limits, the study queue |

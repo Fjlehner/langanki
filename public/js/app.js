@@ -1,4 +1,4 @@
-import { SCRIPTS, DECKS, deckById, splitWord } from './scripts/index.js';
+import { SCRIPTS, BUILT, DECKS, deckById, decksIn, scriptOf, wordBreakdown, wordUnitCount } from './scripts/index.js';
 import { schedule, preview, formatWait, newCard, NEW, dayKey, DAY } from './fsrs.js';
 import { load, save, freshState, normalize, storageAvailable, bumpDaily, addLog, clearLocal } from './store.js';
 import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, freshBeyondLimit, reviewAheadIds, TIMING, baseProgress, itemStatus, nextDue, cardId } from './study.js';
@@ -22,7 +22,6 @@ let flash = ''; // one-time message shown on the next screen
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
-const JA_DECKS = DECKS.filter((d) => d.script === 'ja').map((d) => d.id);
 
 // ---------- saving and sync ----------
 
@@ -152,7 +151,7 @@ function welcomeHTML() {
   return `<section class="welcome">
     <div class="welcome__glyphs" aria-hidden="true"><span lang="ja">あ</span><span lang="ko">한</span><span lang="he">א</span><span lang="hi">अ</span></div>
     <h1 tabindex="-1">Learn to read new writing systems, one card at a time.</h1>
-    <p class="lede">LangAnki is a flashcard course for scripts: Japanese hiragana and katakana first, with Korean, Hebrew and Hindi to follow. It shows each character when you’re about to forget it, and explains every sound with IPA and comparisons to English and Spanish.</p>
+    <p class="lede">LangAnki is a flashcard course for scripts: Japanese hiragana and katakana and Korean Hangul, with Hebrew and Hindi to follow. It shows each character when you’re about to forget it, and explains every sound with IPA and comparisons to English and Spanish.</p>
     <div class="actions">
       <button class="btn btn--primary" data-act="start">Start learning</button>
       <button class="btn" data-act="show-restore">I have a code</button>
@@ -176,15 +175,16 @@ function welcomeHTML() {
 
 // ---------- home ----------
 
-function totals(t = now()) {
+function totals(t = now(), scope = null) {
   let review = 0, fresh = 0, learning = 0;
-  for (const id of JA_DECKS) {
+  const ids = scope ? decksIn(scope) : DECKS.map((d) => d.id);
+  for (const id of ids) {
     const c = deckCounts(state, deckById(id), t);
     review += c.review;
     fresh += c.fresh;
     learning += c.learning;
   }
-  return { review, fresh, learning };
+  return { review, fresh, learning, due: review + learning, any: review + learning + fresh };
 }
 
 function codeBanner() {
@@ -217,9 +217,9 @@ function deckCardHTML(deck, t) {
       ? `<div class="deck__actions"><button class="btn" data-act="unlock-early" data-deck="${deck.id}">Start ${esc(deck.name.toLowerCase())} now</button></div>`
       : '';
     return `<article class="deck deck--locked">
-      <div class="deck__head"><h3>${esc(deck.name)}</h3><span class="deck__native" lang="ja">${esc(deck.native)}</span></div>
+      <div class="deck__head"><h3>${esc(deck.name)}</h3><span class="deck__native" lang="${deck.htmlLang}">${esc(deck.native)}</span></div>
       <p class="muted">${esc(deck.blurb)}</p>
-      <p class="deck__lock">Unlocks when you’ve learned all ${p.total} basic ${esc(base.name.toLowerCase())}: ${p.done} of ${p.total} so far.</p>
+      <p class="deck__lock">Unlocks when you’ve learned the ${p.total} basic ${esc(base.name.toLowerCase())}: ${p.done} of ${p.total} so far.</p>
       <div class="bar" aria-hidden="true"><span style="width:${(p.done / p.total) * 100}%"></span></div>
       ${early}
     </article>`;
@@ -227,7 +227,7 @@ function deckCardHTML(deck, t) {
   const paused = state.settings.paused?.[deck.id];
   const due = c.review + c.learning;
   return `<article class="deck">
-    <div class="deck__head"><h3>${esc(deck.name)}</h3><span class="deck__native" lang="ja">${esc(deck.native)}</span></div>
+    <div class="deck__head"><h3>${esc(deck.name)}</h3><span class="deck__native" lang="${deck.htmlLang}">${esc(deck.native)}</span></div>
     <p class="muted">${esc(deck.blurb)}</p>
     <dl class="counts">
       <div><dt>To review</dt><dd class="c-review">${due}</dd></div>
@@ -237,47 +237,57 @@ function deckCardHTML(deck, t) {
     <div class="bar" aria-hidden="true"><span style="width:${(c.learned / c.total) * 100}%"></span></div>
     <div class="deck__actions">
       <button class="btn ${due + c.fresh ? 'btn--primary' : ''}" data-study="${deck.id}" ${due + c.fresh ? '' : 'disabled'}>Study</button>
-      ${deck.kind === 'chars' ? `<button class="btn" data-browse="${deck.id}">Characters</button>` : `<button class="btn" data-browse="${deck.id}">Words</button>`}
+      <button class="btn" data-browse="${deck.id}">${deck.kind === 'chars' ? 'Characters' : 'Words'}</button>
     </div>
   </article>`;
+}
+
+// One row per script in the Today card: what's due, and a way to study or keep going.
+function todayRowHTML(script, t) {
+  const tot = totals(t, script.id);
+  const line = tot.any ? `${plural(tot.due, 'review')} · ${plural(tot.fresh, 'new card')}` : 'Caught up';
+  const action = tot.any
+    ? `<button class="btn btn--primary" data-study="${script.id}">Study ${esc(script.name)}</button>`
+    : extraStudyHTML(t, script.id);
+  return `<div class="today__row">
+    <span class="today__native" lang="${script.htmlLang}" aria-hidden="true">${esc(script.native)}</span>
+    <div class="today__what"><strong>${esc(script.name)}</strong><span class="muted">${line}</span></div>
+    <div class="today__action">${action}</div>
+  </div>`;
 }
 
 function homeHTML() {
   const t = now();
   const tot = totals(t);
-  const dueAll = tot.review + tot.learning;
-  const anything = dueAll + tot.fresh;
-  const ja = SCRIPTS[0];
   const msg = flash;
   flash = '';
   return `${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
   ${codeBanner()}
   <section class="today">
     <div>
-      <h1 tabindex="-1">${anything ? 'Today' : 'All caught up'}</h1>
-      <p class="today__line">${anything ? `${plural(dueAll, 'card')} to review and ${plural(tot.fresh, 'new card')}.` : nextDueLine(t)}</p>
+      <h1 tabindex="-1">${tot.any ? 'Today' : 'All caught up'}</h1>
+      <p class="today__line">${tot.any ? `${plural(tot.due, 'card')} to review and ${plural(tot.fresh, 'new card')}.` : nextDueLine(t)}</p>
     </div>
-    ${anything ? '<button class="btn btn--primary btn--big" data-study="all">Study now</button>' : ''}
-    ${anything ? '' : extraStudyHTML(t, true)}
+    <div class="today__rows">${BUILT.map((s) => todayRowHTML(s, t)).join('')}</div>
     ${quietSwitch()}
   </section>
-  ${progressHTML(t)}
-  <section class="script" aria-labelledby="ja-h">
-    <div class="script__head"><h2 id="ja-h">${esc(ja.name)}</h2><span class="script__native" lang="ja">${esc(ja.native)}</span></div>
-    <p class="tip">${esc(ja.intro)}</p>
-    <div class="decks">${ja.decks.map((d) => deckCardHTML(d, t)).join('')}</div>
-  </section>
+  ${BUILT.map((sc) => `<section class="script" aria-labelledby="${sc.id}-h">
+    <div class="script__head"><h2 id="${sc.id}-h">${esc(sc.name)}</h2><span class="script__native" lang="${sc.htmlLang}">${esc(sc.native)}</span></div>
+    <p class="tip">${esc(sc.intro)}</p>
+    ${progressHTML(t, sc)}
+    <div class="decks">${sc.decks.map((d) => deckCardHTML(d, t)).join('')}</div>
+  </section>`).join('')}
   <section class="script" aria-labelledby="soon-h">
     <div class="script__head"><h2 id="soon-h">Coming next</h2></div>
-    <div class="soon">${SCRIPTS.filter((s) => s.soon).map((s) => `<div class="soon__item"><span class="soon__native" lang="${s.id}">${esc(s.native)}</span><div><strong>${esc(s.name)}</strong><p class="muted">${esc(s.blurb)}</p></div></div>`).join('')}</div>
+    <div class="soon">${SCRIPTS.filter((sc) => sc.soon).map((sc) => `<div class="soon__item"><span class="soon__native" lang="${sc.htmlLang}">${esc(sc.native)}</span><div><strong>${esc(sc.name)}</strong><p class="muted">${esc(sc.blurb)}</p></div></div>`).join('')}</div>
   </section>`;
 }
 
 // ---------- progress: learned, weak spots, up next ----------
 
-function progressHTML(t) {
-  const decks = JA_DECKS.map(deckById);
-  if (!Object.keys(state.cards).length) return '';
+function progressHTML(t, script) {
+  const decks = script.decks;
+  if (!Object.keys(state.cards).some((k) => decks.some((d) => k.startsWith(`${d.id}:`)))) return '';
   const learned = learnedByDeck(state, decks);
   const weak = weakSpots(state, decks, t);
   const next = upNext(state, decks, t);
@@ -285,69 +295,66 @@ function progressHTML(t) {
   const learnedHTML = learned.length
     ? learned.map((g) => `<div class="prog__deck">
         <div class="prog__deckhead"><strong>${esc(g.deck.name)}</strong><span class="muted">${g.items.length} of ${g.total}${g.writing ? ` · ${g.writing} can write` : ''}</span></div>
-        <div class="chips">${g.items.map((it) => `<span class="chip-ch chip-ch--${it.status}" title="${esc(it.romaji)}"><span lang="ja">${esc(it.label)}</span></span>`).join('')}</div>
+        <div class="chips">${g.items.map((it) => `<span class="chip-ch chip-ch--${it.status}" title="${esc(it.romaji)}"><span lang="${it.lang}">${esc(it.label)}</span></span>`).join('')}</div>
       </div>`).join('')
     : '<p class="muted">Characters appear here once they’ve made it through their first short reviews.</p>';
 
   const weakHTML = weak.length
-    ? `<ul class="weak">${weak.map((w) => `<li><span class="weak__ch" lang="ja">${esc(w.label)}</span><span class="weak__r">${esc(w.romaji)}</span><span class="weak__why">${esc(w.why)}</span></li>`).join('')}</ul>
-       <button class="btn btn--small" data-act="practice-weak">Practice these (${weak.reduce((n, w) => n + w.cardIds.length, 0)} cards)</button>`
+    ? `<ul class="weak">${weak.map((w) => `<li><span class="weak__ch" lang="${w.lang}">${esc(w.label)}</span><span class="weak__r">${esc(w.romaji)}</span><span class="weak__why">${esc(w.why)}</span></li>`).join('')}</ul>
+       <button class="btn btn--small" data-act="practice-weak" data-scope="${script.id}">Practice these (${weak.reduce((n, w) => n + w.cardIds.length, 0)} cards)</button>`
     : '<p class="muted">Nothing stands out yet. Characters you miss or read slowly will show up here.</p>';
 
   const nextHTML = `${next.fresh.map((f) => `<div class="next">
         <div class="prog__deckhead"><strong>${esc(f.deck.name)}</strong><span class="muted">${esc(f.groups.join(', '))}</span></div>
-        <div class="chips">${f.items.map((it) => `<span class="chip-ch chip-ch--next" title="${esc(it.romaji)}"><span lang="ja">${esc(it.char)}</span></span>`).join('')}</div>
+        <div class="chips">${f.items.map((it) => `<span class="chip-ch chip-ch--next" title="${esc(it.romaji)}"><span lang="${f.deck.htmlLang}">${esc(it.char)}</span></span>`).join('')}</div>
       </div>`).join('') || '<p class="muted">No new characters waiting today.</p>'}
     ${next.milestones.map((m) => `<div class="milestone"><div class="prog__deckhead"><span><strong>${m.done} of ${m.total} basic ${esc(m.base)}</strong></span><span class="muted">${m.total - m.done} to go</span></div><p class="small muted">All ${m.total} unlock ${esc(m.unlocks)}.</p><div class="bar" aria-hidden="true"><span style="width:${(m.done / m.total) * 100}%"></span></div></div>`).join('')}
     ${next.due ? `<p class="muted small">Next review ${whenText(next.due, t)}.</p>` : ''}`;
 
-  return `<section class="progress" aria-labelledby="prog-h">
-    <h2 id="prog-h" class="sr-only">Progress</h2>
-    <div class="prog">
+  return `<div class="prog" aria-label="${esc(script.name)} progress">
       <article class="prog__panel"><h3>Learned</h3>${learnedHTML}</article>
       <article class="prog__panel"><h3>Weak spots</h3>${weakHTML}</article>
       <article class="prog__panel"><h3>Up next</h3>${nextHTML}</article>
-    </div>
-  </section>`;
+    </div>`;
 }
 
-function practiceWeak() {
-  const ids = weakSpots(state, JA_DECKS.map(deckById), now()).flatMap((w) => w.cardIds);
-  session = new Session(state, JA_DECKS, now(), { quiet: state.settings.quiet, ids });
+function practiceWeak(scope) {
+  const deckIds = decksIn(scope);
+  const ids = weakSpots(state, deckIds.map(deckById), now()).flatMap((w) => w.cardIds);
+  session = new Session(state, deckIds, now(), { quiet: state.settings.quiet, ids });
   session.label = 'Weak spots';
-  session.scope = 'all';
+  session.scope = scope;
   undoStack = [];
   view = null;
   nextCard();
 }
 
-// Ways to keep going once today's cards are done, like Anki's custom study.
-function extraStudyHTML(t, big = false) {
-  const more = JA_DECKS.reduce((n, id) => n + freshBeyondLimit(state, deckById(id), t), 0);
-  const ahead = reviewAheadIds(state, JA_DECKS, t, 20).length;
-  if (!more && !ahead) return '';
+// Ways to keep going once a script's cards are done, like Anki's custom study.
+function extraStudyHTML(t, scope) {
+  const deckIds = decksIn(scope);
+  const more = deckIds.reduce((n, id) => n + freshBeyondLimit(state, deckById(id), t), 0);
+  const ahead = reviewAheadIds(state, deckIds, t, 20).length;
+  if (!more && !ahead) return '<span class="muted small">Nothing more to study today.</span>';
   const step = state.settings.newPerDay || 10;
-  const cls = big ? 'btn btn--primary btn--big' : 'btn btn--primary';
   return `<div class="extra">
-      ${more ? `<button class="${cls}" data-act="learn-more">Learn ${Math.min(step, more)} more new cards</button>` : ''}
-      ${ahead ? `<button class="${more ? 'btn' + (big ? ' btn--big' : '') : cls}" data-act="review-ahead">Review early (${ahead})</button>` : ''}
-    </div>
-    <p class="help">${more ? 'Learning more raises today’s new-card allowance. ' : ''}${ahead ? 'Reviewing early brings back the cards that are due soonest; they’re rescheduled from today.' : ''}</p>`;
+      ${more ? `<button class="btn btn--primary" data-act="learn-more" data-scope="${scope}">Learn ${Math.min(step, more)} more</button>` : ''}
+      ${ahead ? `<button class="btn" data-act="review-ahead" data-scope="${scope}">Review early (${ahead})</button>` : ''}
+    </div>`;
 }
 
-function learnMore() {
+function learnMore(scope) {
   const t = now();
   const step = state.settings.newPerDay || 10;
-  for (const id of JA_DECKS) {
+  for (const id of decksIn(scope)) {
     const deck = deckById(id);
     if (freshBeyondLimit(state, deck, t)) bumpDaily(state, dayKey(t), `${id}:extra`, step);
   }
   commit();
-  startStudy('all');
+  startStudy(scope);
 }
 
 function nextDueLine(t) {
-  const next = nextDue(state, JA_DECKS.map(deckById), t);
+  const next = nextDue(state, DECKS, t);
   if (!next) return 'Nothing is due. Tomorrow brings new cards.';
   return `Nothing is due right now. The next card comes back ${whenText(next, t)}.`;
 }
@@ -367,9 +374,9 @@ let view = null; // { id, revealed, typed, correct, override, wasNew }
 let undoStack = [];
 
 function startStudy(which, { ahead = false } = {}) {
-  const ids = which === 'all' ? JA_DECKS : [which];
+  const ids = decksIn(which);
   session = new Session(state, ids, now(), { quiet: state.settings.quiet, ahead });
-  session.label = ahead ? 'Review early' : which === 'all' ? 'Japanese' : deckById(which).name;
+  session.label = ahead ? 'Review early' : scriptOf(which)?.id === which ? scriptOf(which).name : deckById(which).name;
   session.scope = which;
   undoStack = [];
   view = null;
@@ -425,10 +432,10 @@ function studyHTML() {
   let front, back = '', actions;
 
   if (deck.kind === 'words') {
-    front = `<div class="${glyphClass()} glyph--word" lang="ja">${esc(item.text)}</div>`;
+    front = `<div class="${glyphClass()} glyph--word" lang="${deck.htmlLang}">${esc(item.text)}</div>`;
     if (view.revealed) back = wordBackHTML(deck, item, sound);
   } else if (dir === 'r') {
-    front = `<div class="${glyphClass()}" lang="ja">${esc(item.char)}</div>`;
+    front = `<div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
     if (view.revealed) back = charBackHTML(deck, item, sound, { open: view.wasNew });
   } else {
     front = productionFrontHTML(deck, item, sound);
@@ -479,22 +486,22 @@ function charBackHTML(deck, item, sound, { open = false, hideRomaji = false } = 
       <div class="answer__ipa">[${esc(item.ipa)}]</div>
       ${sound ? soundButton(item.say, deck.lang) : ''}
     </div>
+    ${item.name ? `<p class="answer__name">Letter name: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
     ${guideHTML(item, { open })}`;
 }
 
 function wordBackHTML(deck, item, sound) {
-  const charDeck = deckById(deck.requires);
-  const units = splitWord(item.text, charDeck) || [];
-  const parts = units.map((u) => {
-    const it = charDeck.items.find((x) => x.char === u);
-    return `<span class="unit"><span class="unit__ch" lang="ja">${esc(u)}</span><span class="unit__r">${esc(it?.romaji || '')}</span></span>`;
-  }).join('');
+  const units = wordBreakdown(deck, item.text);
+  const parts = units.map((u) => `<span class="unit"><span class="unit__ch" lang="${deck.htmlLang}">${esc(u.ch)}</span><span class="unit__r">${esc(u.r)}</span></span>`).join('');
+  const blockwise = units.map((u) => u.r).join('');
+  const changed = deck.breakdown && blockwise.replace(/[^a-z]/g, '') !== item.romaji.replace(/[^a-z]/g, '');
   return `<div class="answer">
       <div class="answer__romaji">${esc(item.romaji)}</div>
       ${sound ? soundButton(item.say, deck.lang) : ''}
     </div>
     <dl class="meaning"><div><dt>English</dt><dd>${esc(item.en)}</dd></div><div><dt>Español</dt><dd lang="es">${esc(item.es)}</dd></div></dl>
-    <div class="units" aria-label="Characters">${parts}</div>`;
+    <div class="units" aria-label="Characters">${parts}</div>
+    ${changed ? `<p class="small muted">Sounds change across blocks: written ${esc(blockwise)}, said ${esc(item.romaji)}.</p>` : ''}`;
 }
 
 function productionFrontHTML(deck, item, sound) {
@@ -502,24 +509,24 @@ function productionFrontHTML(deck, item, sound) {
     return `<div class="prompt prompt--done"><div class="prompt__romaji">${esc(item.romaji)}</div></div>`;
   }
   return `<div class="prompt">
-    <p class="prompt__ask">Write this in <strong>${esc(deck.name.toLowerCase())}</strong></p>
+    <p class="prompt__ask">Write this in <strong>${esc(deck.writeIn || deck.name.toLowerCase())}</strong></p>
     <div class="prompt__romaji">${esc(item.romaji)}</div>
     ${item.hint ? `<p class="prompt__hint">${esc(item.hint)}</p>` : ''}
     <div class="prompt__sound"><span class="answer__ipa">[${esc(item.ipa)}]</span>${sound ? soundButton(item.say, deck.lang) : ''}</div>
     <form class="typed" id="typed-form" autocomplete="off">
       <label class="sr-only" for="typed">Your answer</label>
-      <input id="typed" class="typed__input glyph--${state.settings.kanaStyle}" lang="ja" value="${esc(view.typed)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-autofocus>
+      <input id="typed" class="typed__input glyph--${state.settings.kanaStyle}" lang="${deck.htmlLang}" value="${esc(view.typed)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-autofocus>
     </form>
-    ${mobile ? `<p class="muted small">Use your ${deck.lang.startsWith('ja') ? 'Japanese kana' : ''} keyboard.</p>` : ''}
+    ${mobile ? `<p class="muted small">Use your ${{ ja: 'Japanese kana', ko: 'Korean' }[deck.htmlLang] || ''} keyboard.</p>` : ''}
   </div>`;
 }
 
 function productionResultHTML(deck, item) {
   const typed = view.typed.trim();
-  if (view.correct) return `<p class="result result--ok"><span aria-hidden="true">✓</span> Correct</p><div class="${glyphClass()}" lang="ja">${esc(item.char)}</div>`;
-  const wrongScript = typed && toOtherScript(typed) === item.char;
-  const msg = !typed ? 'The answer is' : wrongScript ? `Right sound, other script. You wrote ${esc(typed)}; in ${esc(deck.name.toLowerCase())} it’s` : `You wrote <span lang="ja">${esc(typed)}</span>. The answer is`;
-  return `<p class="result result--err"><span aria-hidden="true">✗</span> ${msg}</p><div class="${glyphClass()}" lang="ja">${esc(item.char)}</div>`;
+  if (view.correct) return `<p class="result result--ok"><span aria-hidden="true">✓</span> Correct</p><div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
+  const wrongScript = typed && deck.htmlLang === 'ja' && toOtherScript(typed) === item.char;
+  const msg = !typed ? 'The answer is' : wrongScript ? `Right sound, other script. You wrote ${esc(typed)}; in ${esc(deck.name.toLowerCase())} it’s` : `You wrote <span lang="${deck.htmlLang}">${esc(typed)}</span>. The answer is`;
+  return `<p class="result result--err"><span aria-hidden="true">✗</span> ${msg}</p><div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
 }
 
 const toOtherScript = (s) => s.replace(/[ぁ-ゖァ-ヶ]/g, (ch) => {
@@ -527,21 +534,28 @@ const toOtherScript = (s) => s.replace(/[ぁ-ゖァ-ヶ]/g, (ch) => {
   return String.fromCharCode(c < 0x30a0 ? c + 0x60 : c - 0x60);
 });
 
-// Laid out like a kana table: each consonant row is a column, vowels run down.
+// Kana: laid out like a kana table, each consonant row a column with vowels running down.
+// Hangul: the standard two-set (dubeolsik) layout, with keys composing into blocks.
 function kanaKeyboardHTML(deck) {
-  const key = (ch) => (ch === ' ' || !ch ? '<span class="kb__gap"></span>' : `<button type="button" class="kb__key" data-key="${ch}" lang="ja">${ch}</button>`);
+  const key = (ch) => (ch === ' ' || !ch ? '<span class="kb__gap"></span>' : `<button type="button" class="kb__key" data-key="${ch}" lang="${deck.htmlLang}">${ch}</button>`);
+  const edit = '<button type="button" class="kb__key kb__key--wide" data-key="back">⌫ Delete</button><button type="button" class="kb__key kb__key--wide" data-key="clear">Clear</button>';
+  if (deck.keyboardRows) {
+    return `<div class="kb kb--rows" aria-label="On-screen ${esc(deck.writeIn || deck.name)} keyboard">
+      ${deck.keyboardRows.map((r, i) => `<div class="kb__line" style="--indent:${[0, 0.5, 1.5, 0, 0][i] || 0}">${[...r].map(key).join('')}</div>`).join('')}
+      <div class="kb__extras">${edit}</div>
+    </div>`;
+  }
   const table = (rows) => `<div class="kb__table" style="--cols:${rows.length}">${[0, 1, 2, 3, 4].map((v) => rows.map((r) => key([...r][v])).join('')).join('')}</div>`;
   const rows = deck.keyboard;
   const extras = rows.slice(15).join('').replace(/ /g, '');
   return `<div class="kb" aria-label="On-screen ${esc(deck.name)} keyboard">
     <div class="kb__tables">${table(rows.slice(0, 10))}${table(rows.slice(10, 15))}</div>
-    <div class="kb__extras">${[...extras].map(key).join('')}
-      <button type="button" class="kb__key kb__key--wide" data-key="back">⌫ Delete</button><button type="button" class="kb__key kb__key--wide" data-key="clear">Clear</button></div>
+    <div class="kb__extras">${[...extras].map(key).join('')}${edit}</div>
   </div>`;
 }
 
 function guideHTML(item, { open = false } = {}) {
-  const kinds = { consonant: 'Consonant', vowel: 'Vowel', glide: 'Glide' };
+  const kinds = { consonant: 'Consonant', vowel: 'Vowel', glide: 'Glide', initial: 'Start of block', final: 'End of block' };
   const parts = item.parts.map((p) => `<li class="part part--${p.kind}">
       <div class="part__head"><span class="part__sym">${esc(p.sym)}</span><span class="part__kind">${kinds[p.kind]}</span><span class="part__ipa">/${esc(p.ipa)}/</span></div>
       <p class="part__type">${esc(p.type)}. ${esc(p.how)}</p>
@@ -583,7 +597,7 @@ document.addEventListener('visibilitychange', () => {
 // A correct answer's grade from how long it took. Easy needs a card that's past learning,
 // so a first lucky guess doesn't send a brand-new character away for weeks.
 function timedGrade(card, deck, item, dir, ms) {
-  const units = deck.kind === 'words' ? (splitWord(item.text, deckById(deck.requires)) || [item.text]).length : 1;
+  const units = deck.kind === 'words' ? wordUnitCount(deck, item.text) : 1;
   const t = TIMING[dir];
   const extra = (units - 1) * t.perExtra;
   const g = ms <= t.easy + extra ? 4 : ms <= t.good + extra ? 3 : 2;
@@ -654,19 +668,20 @@ function endStudy() {
 
 function finishedHTML() {
   const t = now();
-  const decks = screen.scope === 'all' ? JA_DECKS.map(deckById) : [deckById(screen.scope)];
+  const scope = scriptOf(screen.scope)?.id || screen.scope;
+  const decks = decksIn(scope).map(deckById);
   const next = nextDue(state, decks, t);
-  const tot = totals(t);
-  const more = tot.review + tot.learning + tot.fresh;
+  const tot = totals(t, scope);
+  const more = tot.any;
   return `<section class="narrow finished">
     <h1 tabindex="-1">${screen.done ? 'Done for now' : 'Nothing to study'}</h1>
     <p class="lede">${screen.done ? `You answered ${plural(screen.done, 'card')}.` : 'There are no cards due here.'} ${next ? `The next card comes back ${whenText(next, t)}.` : ''}</p>
     ${state.settings.quiet ? '<p class="muted">Quiet mode is on, so writing cards were skipped. Turn it off when you can use sound to practice writing too.</p>' : ''}
     <div class="actions">
-      ${more ? `<button class="btn btn--primary" data-study="all">Keep studying (${more})</button>` : ''}
+      ${more ? `<button class="btn btn--primary" data-study="${scope}">Keep studying (${more})</button>` : ''}
       <button class="btn" data-go="home">Back to overview</button>
     </div>
-    ${more ? '' : extraStudyHTML(t)}
+    ${more ? '' : extraStudyHTML(t, scope)}
   </section>`;
 }
 
@@ -679,12 +694,12 @@ function browseHTML() {
       <h3 class="group__name">${esc(g.name)}</h3>
       <div class="tiles">${g.items.map((it) => {
         const st = itemStatus(state, deck, it);
-        return `<button class="tile tile--${st}" data-guide="${it.id}" aria-label="${esc(it.char)}, ${esc(it.romaji)}, ${st}"><span class="tile__ch ${glyphClass()}" lang="ja">${esc(it.char)}</span><span class="tile__r">${esc(it.romaji)}</span></button>`;
+        return `<button class="tile tile--${st}" data-guide="${it.id}" aria-label="${esc(it.char)}, ${esc(it.romaji)}, ${st}"><span class="tile__ch ${glyphClass()}" lang="${deck.htmlLang}">${esc(it.char)}</span><span class="tile__r">${esc(it.romaji)}</span></button>`;
       }).join('')}</div>
     </section>`).join('');
   return `<div class="browse">
     <button class="link back" data-go="home">← Overview</button>
-    <div class="script__head"><h1 tabindex="-1">${esc(deck.name)}</h1><span class="script__native" lang="ja">${esc(deck.native)}</span></div>
+    <div class="script__head"><h1 tabindex="-1">${esc(deck.name)}</h1><span class="script__native" lang="${deck.htmlLang}">${esc(deck.native)}</span></div>
     <p class="muted">Tap a character for its sound and how to say it. Colors show your progress.</p>
     <ul class="legend"><li class="tile--new">Not started</li><li class="tile--learning">Learning</li><li class="tile--learned">Learned</li><li class="tile--strong">Strong (3+ weeks)</li></ul>
     ${groups}
@@ -696,7 +711,7 @@ function wordsBrowseHTML(deck) {
   const rows = deck.items.map((w) => {
     const c = state.cards[cardId(deck.id, w.id, 'r')];
     const seen = c && c.st !== NEW;
-    return `<li class="word ${seen ? '' : 'word--unseen'}"><span class="word__text ${glyphClass()}" lang="ja">${esc(w.text)}</span><span class="word__r">${seen ? esc(w.romaji) : ''}</span><span class="word__m">${seen ? `${esc(w.en)} · <span lang="es">${esc(w.es)}</span>` : '<span class="muted">Not studied yet</span>'}</span></li>`;
+    return `<li class="word ${seen ? '' : 'word--unseen'}"><span class="word__text ${glyphClass()}" lang="${deck.htmlLang}">${esc(w.text)}</span><span class="word__r">${seen ? esc(w.romaji) : ''}</span><span class="word__m">${seen ? `${esc(w.en)} · <span lang="es">${esc(w.es)}</span>` : '<span class="muted">Not studied yet</span>'}</span></li>`;
   }).join('');
   return `<div class="browse">
     <button class="link back" data-go="home">← Overview</button>
@@ -716,13 +731,14 @@ function guideScreenHTML() {
   return `<div class="guide-page">
     <button class="link back" data-browse="${deck.id}">← ${esc(deck.name)}</button>
     <div class="guide-page__hero">
-      <div class="${glyphClass()}" lang="ja">${esc(item.char)}</div>
+      <div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>
       <div class="answer"><div class="answer__romaji">${esc(item.romaji)}</div><div class="answer__ipa">[${esc(item.ipa)}]</div>${sound ? soundButton(item.say, deck.lang) : ''}</div>
+      ${item.name ? `<p class="answer__name">Letter name: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
     </div>
     ${guideHTML(item, { open: true })}
     <nav class="pager" aria-label="Other characters">
-      ${prev ? `<button class="btn" data-guide="${prev.id}">← <span lang="ja">${esc(prev.char)}</span></button>` : '<span></span>'}
-      ${nextItem ? `<button class="btn" data-guide="${nextItem.id}"><span lang="ja">${esc(nextItem.char)}</span> →</button>` : '<span></span>'}
+      ${prev ? `<button class="btn" data-guide="${prev.id}">← <span lang="${deck.htmlLang}">${esc(prev.char)}</span></button>` : '<span></span>'}
+      ${nextItem ? `<button class="btn" data-guide="${nextItem.id}"><span lang="${deck.htmlLang}">${esc(nextItem.char)}</span> →</button>` : '<span></span>'}
     </nav>
   </div>`;
 }
@@ -731,10 +747,11 @@ function guideScreenHTML() {
 
 function settingsHTML() {
   const s = state.settings;
-  const voice = canSpeak('ja-JP');
   const msg = flash;
   flash = '';
-  const decks = JA_DECKS.map(deckById);
+  const decks = DECKS;
+  const voices = BUILT.map((sc) => ({ name: sc.name, ok: canSpeak(sc.lang) }));
+  const missing = voices.filter((v) => !v.ok).map((v) => v.name);
   return `<div class="settings">
     <button class="link back" data-go="home">← Overview</button>
     <h1 tabindex="-1">Settings</h1>
@@ -744,7 +761,7 @@ function settingsHTML() {
       <div class="field">
         <label for="newPerDay">New cards per day, per script</label>
         <div class="stepper"><button class="btn btn--small" data-step="-1" aria-label="Fewer">−</button><input id="newPerDay" type="number" inputmode="numeric" min="0" max="50" value="${s.newPerDay}" data-setting="newPerDay"><button class="btn btn--small" data-step="1" aria-label="More">+</button></div>
-        <p class="help">Hiragana and katakana each get this many. Writing cards have their own allowance of the same size.</p>
+        <p class="help">Each deck gets this many (hiragana, katakana, Hangul letters and so on). Writing cards have their own allowance of the same size.</p>
       </div>
       <div class="field">
         <label for="retention">How much to remember</label>
@@ -763,7 +780,7 @@ function settingsHTML() {
       </fieldset>
       <fieldset class="field">
         <legend>Pause new cards</legend>
-        ${decks.map((d) => `<label class="check"><input type="checkbox" data-pause="${d.id}" ${s.paused?.[d.id] ? 'checked' : ''}> ${esc(d.name)}</label>`).join('')}
+        ${BUILT.map((sc) => `<p class="check-group">${esc(sc.name)}</p>${sc.decks.map((d) => `<label class="check"><input type="checkbox" data-pause="${d.id}" ${s.paused?.[d.id] ? 'checked' : ''}> ${esc(d.name)}</label>`).join('')}`).join('')}
         <p class="help">Reviews continue for paused decks.</p>
       </fieldset>
       ${startOverHTML(decks)}
@@ -772,12 +789,12 @@ function settingsHTML() {
       <h2>Sound and display</h2>
       ${quietSwitch('quiet-s')}
       <label class="switch" for="autoplay"><input type="checkbox" id="autoplay" data-setting="autoplay" ${s.autoplay ? 'checked' : ''}><span class="switch__track" aria-hidden="true"></span><span class="switch__text"><strong>Play the sound automatically</strong> <span class="muted">When the answer shows</span></span></label>
-      <p class="help">${voice ? 'This device has a Japanese voice.' : 'This device has no Japanese voice, so play buttons are hidden. On iPhone, add one under Settings › Accessibility › Spoken Content › Voices.'}</p>
+      <p class="help">${missing.length ? `This device has no ${missing.join(' or ')} voice, so play buttons are hidden for ${missing.length > 1 ? 'those languages' : 'that language'}. On iPhone, add voices under Settings › Accessibility › Spoken Content › Voices.` : `This device has ${voices.map((v) => v.name).join(' and ')} voices.`}</p>
       <fieldset class="field">
         <legend>Character style</legend>
         <div class="choices">
-          <label class="choice"><input type="radio" name="kanaStyle" value="textbook" ${s.kanaStyle === 'textbook' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--textbook" lang="ja">さきり</span> Textbook</label>
-          <label class="choice"><input type="radio" name="kanaStyle" value="print" ${s.kanaStyle === 'print' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--print" lang="ja">さきり</span> Print</label>
+          <label class="choice"><input type="radio" name="kanaStyle" value="textbook" ${s.kanaStyle === 'textbook' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--textbook" lang="ja">さきり</span><span class="glyph--textbook" lang="ko">한글</span> Textbook</label>
+          <label class="choice"><input type="radio" name="kanaStyle" value="print" ${s.kanaStyle === 'print' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--print" lang="ja">さきり</span><span class="glyph--print" lang="ko">한글</span> Print</label>
         </div>
         <p class="help">Textbook shapes look like handwriting. Print is what you’ll see on signs and screens.</p>
       </fieldset>
@@ -800,7 +817,7 @@ function startOverHTML(decks) {
   return `<div class="field">
       <span class="field__label">Start a deck over</span>
       <div class="actions">${started.map((d) => `<button class="btn btn--small btn--danger" data-act="reset-deck" data-deck="${d.id}">Reset ${esc(d.name.toLowerCase())}</button>`).join('')}</div>
-      <p class="help">Erases that deck’s progress on every device, including its word deck. ${started.some((d) => d.after) ? 'Katakana locks again until the basic hiragana are learned.' : ''}</p>
+      <p class="help">Erases that deck’s progress on every device, along with any word deck built on it. Decks that wait on it lock again.</p>
     </div>`;
 }
 
@@ -943,23 +960,24 @@ app.addEventListener('click', async (e) => {
       return document.getElementById('restore-code')?.focus();
     case 'reset-deck': {
       const deck = deckById(d.deck);
-      if (!confirm(`Erase all your ${deck.name.toLowerCase()} progress, including ${deck.name.toLowerCase()} words? This can’t be undone.`)) return;
+      const words = DECKS.filter((x) => x.requires === deck.id).map((x) => x.name.toLowerCase());
+      if (!confirm(`Erase all your ${deck.name.toLowerCase()} progress${words.length ? `, including ${words.join(' and ')}` : ''}? This can’t be undone.`)) return;
       resetDeck(state, deck.id, now());
       commit();
       flash = `${deck.name} has been reset.`;
       return render();
     }
     case 'unlock-early':
-      if (!confirm(`Start ${deckById(d.deck).name.toLowerCase()} now? Learning both scripts at once is harder, which is why it normally waits until the basic hiragana are learned.`)) return;
+      if (!confirm(`Start ${deckById(d.deck).name.toLowerCase()} now? It normally waits until you’ve learned the basic ${lockedBy(deckById(d.deck)).name.toLowerCase()}, which makes it easier.`)) return;
       state.settings.unlocked = { ...state.settings.unlocked, [d.deck]: true };
       commit();
       return render();
     case 'learn-more':
-      return learnMore();
+      return learnMore(d.scope);
     case 'practice-weak':
-      return practiceWeak();
+      return practiceWeak(d.scope);
     case 'review-ahead':
-      return startStudy('all', { ahead: true });
+      return startStudy(d.scope, { ahead: true });
     case 'reveal':
       return reveal();
     case 'check':
@@ -1071,9 +1089,10 @@ function toggleQuietInStudy() {
 function keyPress(key) {
   const input = document.getElementById('typed');
   if (!input) return;
-  if (key === 'back') input.value = [...input.value].slice(0, -1).join('');
+  const deck = parseId(view.id).deck;
+  if (key === 'back') input.value = deck.deleteKey ? deck.deleteKey(input.value) : [...input.value].slice(0, -1).join('');
   else if (key === 'clear') input.value = '';
-  else input.value += key;
+  else input.value = deck.typeKey ? deck.typeKey(input.value, key) : input.value + key;
   view.typed = input.value;
   input.focus();
 }

@@ -4,7 +4,7 @@ Paste or attach this file in a new chat to pick the project up where it left off
 
 ## What it is
 
-LangAnki is a free, browser-based flashcard app for learning writing systems, built like Anki. Japanese hiragana and katakana are built; Korean hangul, Hebrew and Hindi (Devanagari) come next. It's a personal project for Joe, shared with family and friends, and runs on Cloudflare's free `workers.dev` address. It's a sibling of Unlearn (`Fjlehner/unlearn_h_and_t`) and reuses its code system.
+LangAnki is a free, browser-based flashcard app for learning writing systems, built like Anki. Japanese hiragana and katakana and Korean Hangul are built; Hebrew and Hindi (Devanagari) come next. It's a personal project for Joe, shared with family and friends, and runs on Cloudflare's free `workers.dev` address. It's a sibling of Unlearn (`Fjlehner/unlearn_h_and_t`) and reuses its code system.
 
 ## Where things live
 
@@ -51,9 +51,19 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 - Progress: localStorage key `langanki.v1`. Sync API and code format are the same as Unlearn's, with header `X-LangAnki-Code` and hash prefix `langanki:`. Merging keeps each card's most recently reviewed copy.
 - Test hooks: `?device=mobile` or `?device=desktop` forces device detection for the tab; `sessionStorage['langanki.clockOffset']` shifts the clock.
 
+## Korean (built October 13, 2026)
+
+- `scripts/korean.js`: decks `hangul` (40 letters; the 24 in the first five groups are the "basic" set), `hangul-blocks` (156 curated blocks in 16 groups, `after: 'hangul'`, each block's `needs` lists the letters it uses) and `ko-words` (55 words, `needsOf` decomposes words into letters).
+- Letters carry `name`/`nameRomaji` (기역, giyeok) and guide parts of kind `initial` and `final`. Tense ㄸ ㅃ ㅉ have no final part.
+- Romanization: Revised Romanization; letters show both positions (g / k). Blocks are romanized on their own; words use pronounced RR (한국어 hangugeo) and the card notes when that differs from block-by-block spelling.
+- `compose`/`decompose`/`typeKey`/`deleteKey` implement two-set keyboard composition (including combined vowels, double finals and a final moving to the next block before a vowel). The desktop keyboard is the dubeolsik layout plus rows for tense consonants and combined vowels.
+- Fonts: Gowun Dodum (textbook) and Noto Sans KR (print), applied by `:lang(ko)`.
+- Joe asked that Korean not depend on Japanese progress; each script's decks unlock only from within the script.
+- The overview's Today card has one row per script (Study, or Learn more / Review early when caught up), and each script section has its own progress panels. Study scopes are script ids (`ja`, `ko`) or deck ids.
+
 ## Known gaps and ideas for next
 
-- Build Korean, Hebrew (print, then cursive) and Hindi.
+- Build Hebrew (print, then cursive) and Hindi.
 - Stroke order for kana.
 - Recorded audio where browser voices are poor (`RECORDINGS` in `speech.js`).
 - Fonts for the other scripts (for example Noto Sans KR, Noto Sans Hebrew, Noto Sans Devanagari) and a cursive Hebrew font.

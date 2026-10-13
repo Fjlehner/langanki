@@ -1,15 +1,22 @@
-// All writing systems. Japanese is built; the others are listed as coming next.
+// All writing systems. Japanese and Korean are built; the others are listed as coming next.
 import { JAPANESE } from './japanese.js';
+import { KOREAN } from './korean.js';
 
 export const SCRIPTS = [
   JAPANESE,
-  { id: 'ko', name: 'Korean', native: '한국어', soon: true, blurb: 'Hangul letters, then syllable blocks.' },
-  { id: 'he', name: 'Hebrew', native: 'עברית', soon: true, blurb: 'Print letters and vowel points, then cursive.' },
-  { id: 'hi', name: 'Hindi', native: 'हिन्दी', soon: true, blurb: 'Devanagari vowels, consonants, matras and conjuncts.' },
+  KOREAN,
+  { id: 'he', name: 'Hebrew', native: 'עברית', htmlLang: 'he', soon: true, blurb: 'Print letters and vowel points, then cursive.' },
+  { id: 'hi', name: 'Hindi', native: 'हिन्दी', htmlLang: 'hi', soon: true, blurb: 'Devanagari vowels, consonants, matras and conjuncts.' },
 ];
+export const BUILT = SCRIPTS.filter((s) => !s.soon);
 
-export const DECKS = SCRIPTS.flatMap((s) => s.decks || []);
+export const DECKS = BUILT.flatMap((s) => s.decks);
 export const deckById = (id) => DECKS.find((d) => d.id === id);
+// A study scope is a script id (all its decks) or a single deck id.
+export const decksIn = (scope) => (BUILT.find((s) => s.id === scope)?.decks.map((d) => d.id)) || [scope];
+export const scriptOf = (scope) => BUILT.find((s) => s.id === scope) || BUILT.find((s) => s.id === deckById(scope)?.script);
+
+for (const s of BUILT) for (const d of s.decks) d.htmlLang ||= s.htmlLang || s.id;
 
 // Flatten each character deck's items, tagged with their group.
 for (const d of DECKS) {
@@ -34,4 +41,25 @@ export function splitWord(text, charDeck) {
     i += unit.length;
   }
   return out;
+}
+
+// Ids of the character-deck items a word needs before it can be studied.
+export function wordNeeds(wordDeck, text) {
+  if (wordDeck.needsOf) return wordDeck.needsOf(text);
+  const charDeck = deckById(wordDeck.requires);
+  const units = splitWord(text, charDeck);
+  return units ? units.map((u) => charDeck.items.find((it) => it.char === u)?.id) : null;
+}
+
+// How many characters (or blocks) a word has, for answer-time allowances.
+export function wordUnitCount(wordDeck, text) {
+  if (wordDeck.unitCount) return wordDeck.unitCount(text);
+  return (splitWord(text, deckById(wordDeck.requires)) || [text]).length;
+}
+
+// A word split into units with their romanization, for the answer side of a word card.
+export function wordBreakdown(wordDeck, text) {
+  if (wordDeck.breakdown) return wordDeck.breakdown(text);
+  const charDeck = deckById(wordDeck.requires);
+  return (splitWord(text, charDeck) || []).map((u) => ({ ch: u, r: charDeck.items.find((it) => it.char === u)?.romaji || '' }));
 }

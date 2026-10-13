@@ -108,7 +108,8 @@ try:
         # Katakana waits for hiragana: only hiragana is offered at the start.
         assert page.locator("[data-study=kata]").count() == 0, "katakana should start locked"
         assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1
-        assert "10 new cards" in page.inner_text(".today__line")
+        assert "20 new cards" in page.inner_text(".today__line"), "10 hiragana + 10 Hangul letters"
+        assert page.locator(".today__row").count() == 2, "one Today row per script"
 
         # Day 0: first study session.
         page.click("[data-study=hira]")
@@ -133,14 +134,14 @@ try:
         assert seen["r"] >= 10 and seen["p"] == 0, seen  # each new card is seen at both learning steps
         shot(page, "05-phone-finished")
         # Caught up: learn more new cards today.
-        page.click("[data-act=learn-more]")
+        page.click("[data-act=learn-more][data-scope=ja]")
         page.wait_for_selector(".card")
         seen_more = study_all(page)
         assert len([k for k in state(page)["cards"] if k.startswith("hira:")]) == 20, "learn more adds another 10"
         page.click("[data-go=home]")
-        assert page.locator("[data-act=review-ahead]").count() == 1
+        assert page.locator("[data-act=review-ahead][data-scope=ja]").count() == 1
         shot(page, "05b-phone-caught-up")
-        page.click("[data-act=review-ahead]")
+        page.click("[data-act=review-ahead][data-scope=ja]")
         page.wait_for_selector(".card")
         study_all(page)
 
@@ -185,13 +186,13 @@ try:
         # Progress panels: learned, weak spots (from the missed writing cards), up next.
         page.goto(BASE)
         page.wait_for_selector(".prog")
-        assert page.locator(".prog__panel").count() == 3
+        assert page.locator(".prog__panel").count() == 3, "progress shows only for scripts with cards"
         assert page.locator(".chip-ch--learned, .chip-ch--strong").count() >= 10
         assert page.locator(".weak li").count() > 0, "missed cards should show as weak spots"
         assert page.locator(".chip-ch--next").count() > 0
         shot(page, "06b-phone-progress")
-        page.locator(".prog").screenshot(path=os.path.join(OUT, "06c-phone-progress-panels.png"))
-        page.click("[data-act=practice-weak]")
+        page.locator(".prog").first.screenshot(path=os.path.join(OUT, "06c-phone-progress-panels.png"))
+        page.click("[data-act=practice-weak][data-scope=ja]")
         page.wait_for_selector(".card")
         study_all(page)
         assert seen["p"] > 0, "writing cards should appear after a passed review"
@@ -207,7 +208,7 @@ try:
             assert not is_prod, "quiet mode must skip writing cards"
             assert pg.locator("[data-say]").count() == 0
 
-        page.click("[data-study=all]")
+        page.click("[data-study=ja]")
         seen = study_all(page, on_card=quiet_check)
         print("quiet seen", seen)
         page.goto(BASE)
@@ -237,13 +238,40 @@ try:
         }""")
         page.goto(BASE)
         page.wait_for_selector(".today")
-        assert page.locator(".deck--locked").count() == 1, "only the katakana word deck should still be locked"
+        locked = page.locator(".deck--locked").all_inner_texts()
+        assert len([x for x in locked if "Katakana words" in x or "Hiragana words" in x]) == 1, "only the katakana word deck should still be locked in Japanese"
+        assert page.locator("[data-study=hira-words]").count() == 1
         page.click("[data-study=hira-words]")
         page.wait_for_selector(".glyph--word")
         page.click("[data-act=reveal]")
         assert page.locator(".meaning").count() == 1
         shot(page, "10-phone-word-back")
         study_all(page)
+
+        # Korean: letters first; syllable blocks wait for the 24 basic letters.
+        page.goto(BASE)
+        page.wait_for_selector(".today")
+        assert page.locator("[data-act=unlock-early][data-deck=hangul-blocks]").count() == 1, "blocks start locked"
+        assert page.locator(".deck--locked").filter(has_text="Korean words").count() == 1
+        page.click("[data-study=hangul]")
+        page.wait_for_selector(".card")
+        assert page.locator(".glyph:lang(ko)").count() == 1
+        page.click("[data-act=reveal]")
+        assert page.locator(".part--initial").count() >= 1 or page.locator(".part--vowel").count() >= 1
+        shot(page, "14-phone-korean-back")
+        page.screenshot(path=os.path.join(OUT, "14b-phone-korean-back-full.png"), full_page=True)
+        page.click(GOT_IT)
+        study_all(page)
+        assert all(not k.startswith("hangul-blocks") for k in state(page)["cards"])
+        page.click("[data-go=home]")
+        page.click("[data-browse=hangul]")
+        page.click(".tile:has-text('ㄱ')")
+        page.wait_for_selector(".guide-page")
+        assert "giyeok" in page.inner_text(".guide-page") and page.locator(".part--final").count() == 1
+        page.screenshot(path=os.path.join(OUT, "15-phone-korean-guide.png"), full_page=True)
+        page.goto(BASE)
+        shot(page, "16-phone-home-two-scripts")
+        page.screenshot(path=os.path.join(OUT, "16b-phone-home-full.png"), full_page=True)
 
         # Settings.
         page.goto(BASE)
@@ -310,7 +338,7 @@ try:
         seen = study_all(page, on_card=desktop_prod)
         assert used_keyboard["done"], "a katakana writing card should have appeared"
         page.click("[data-go=home]")
-        page.locator(".prog").screenshot(path=os.path.join(OUT, "24-desktop-progress.png"))
+        page.locator(".prog").first.screenshot(path=os.path.join(OUT, "24-desktop-progress.png"))
         page.click("[data-browse=kata]")
         shot(page, "23-desktop-browse")
 
@@ -324,6 +352,59 @@ try:
         assert "kata" in s["resets"]
         page.click("[data-go=home]")
         assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1, "katakana should be locked again"
+
+        # Korean writing on desktop: the on-screen keyboard composes blocks.
+        page.evaluate("""async () => {
+          const { deckById } = await import('/js/scripts/index.js');
+          const s = JSON.parse(localStorage.getItem('langanki.v1'));
+          const t = Date.now() + Number(sessionStorage.getItem('langanki.clockOffset'));
+          for (const it of deckById('hangul').items.filter((i) => i.base)) {
+            s.cards[`hangul:${it.id}:r`] = { st: 2, s: 5, d: 5, step: 0, due: t + 5 * 864e5, last: t - 2 * 864e5, reps: 3, lapses: 0 };
+          }
+          localStorage.setItem('langanki.v1', JSON.stringify(s));
+        }""")
+        page.goto(BASE)
+        page.wait_for_selector(".today")
+        assert page.locator("[data-study=hangul-blocks]").count() == 1, "blocks unlock after the basic letters"
+        assert page.locator("[data-study=ko-words]").count() == 1, "Korean words unlock after the basic letters"
+        page.evaluate("""() => { document.querySelector('[data-study=hangul-blocks]').click(); }""")
+        page.wait_for_selector(".card")
+        page.keyboard.press("Space")
+        shot(page, "25-desktop-korean-block")
+        page.goto(BASE)
+        page.click("[data-study=hangul]")
+        composed = {"done": False}
+
+        def korean_prod(pg, i, is_prod):
+            if is_prod and not composed["done"]:
+                assert pg.locator(".kb--rows").count() == 1, "Korean keyboard on desktop"
+                for k in "ㅎㅏㄴㄱㅡㄹ":
+                    pg.click(f".kb__key[data-key='{k}']")
+                assert pg.input_value("#typed") == "한글", pg.input_value("#typed")
+                pg.click(".kb__key[data-key=back]")
+                assert pg.input_value("#typed") == "한그"
+                shot(pg, "26-desktop-korean-keyboard")
+                pg.click(".kb__key[data-key=clear]")
+                composed["done"] = True
+
+        KO_ANSWER = """async () => {
+          const { deckById } = await import('/js/scripts/index.js');
+          const romaji = document.querySelector('.prompt__romaji').textContent;
+          const it = deckById('hangul').items.find((x) => x.romaji === romaji);
+          return it ? it.char : null;
+        }"""
+        for _ in range(200):
+            if page.locator(".finished").count():
+                break
+            page.wait_for_selector(".card")
+            if page.locator("#typed").count():
+                korean_prod(page, 0, True)
+                page.fill("#typed", page.evaluate(KO_ANSWER))
+                page.click("[data-act=check]")
+                assert page.locator(".result--ok").count() == 1
+            elif page.locator("[data-act=reveal]").count():
+                page.click("[data-act=reveal]")
+            page.click(GOT_IT)
         desk.close()
         browser.close()
 finally:

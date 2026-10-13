@@ -1,7 +1,7 @@
 // The overview's progress panels: what's learned, what's weak, and what's coming next.
 
 import { NEW, REVIEW, RELEARNING, LEARNING } from './fsrs.js';
-import { deckById, splitWord } from './scripts/index.js';
+import { deckById, wordUnitCount } from './scripts/index.js';
 import { cardId, deckCards, deckLocked, lockedBy, baseProgress, introducible, recognized, nextDue, TIMING } from './study.js';
 
 const MONTH = 30 * 24 * 3600 * 1000;
@@ -16,7 +16,7 @@ export function learnedByDeck(state, decks) {
     for (const item of deck.items) {
       const r = state.cards[cardId(deck.id, item.id, 'r')];
       if (!recognized(state, deck.id, item.id)) continue;
-      items.push({ label: label(deck, item), romaji: item.romaji, status: r.s >= 21 ? 'strong' : 'learned' });
+      items.push({ lang: deck.htmlLang, label: label(deck, item), romaji: item.romaji, status: r.s >= 21 ? 'strong' : 'learned' });
       const p = state.cards[cardId(deck.id, item.id, 'p')];
       if (p && (p.st === REVIEW || p.st === RELEARNING)) writing++;
     }
@@ -54,7 +54,7 @@ export function weakSpots(state, decks, now, limit = 6) {
       }
       const recent = times.slice(-5);
       const avg = recent.length ? recent.reduce((a, b) => a + b, 0) / recent.length : 0;
-      const units = deck.kind === 'words' ? (splitWord(item.text, deckById(deck.requires)) || [1]).length : 1;
+      const units = deck.kind === 'words' ? wordUnitCount(deck, item.text) : 1;
       const slow = recent.length >= 2 && avg > TIMING.r.good + (units - 1) * TIMING.r.perExtra;
       const score = misses + lapses * 1.5 + (relearning ? 2 : 0) + (slow ? 1.5 : 0);
       if (score < 1) continue;
@@ -63,7 +63,7 @@ export function weakSpots(state, decks, now, limit = 6) {
         misses ? `missed ${misses}×` : lapses ? `forgotten ${lapses}×` : '',
         slow ? `slow (${(avg / 1000).toFixed(1)} s)` : '',
       ].filter(Boolean).join(' · ');
-      rows.push({ label: label(deck, item), romaji: item.romaji, why, score, cardIds: ids });
+      rows.push({ lang: deck.htmlLang, label: label(deck, item), romaji: item.romaji, why, score, cardIds: ids });
     }
   }
   return rows.sort((a, b) => b.score - a.score).slice(0, limit);

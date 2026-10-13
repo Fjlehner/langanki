@@ -387,3 +387,39 @@ select { min-height: 46px; padding: 8px 12px; font: 1rem var(--font-ui); color: 
 .weak__ch { font-family: var(--font-textbook); font-size: 1.5rem; line-height: 1.2; min-width: 1.4em; text-align: center; }
 .weak__r { font-weight: 700; }
 .weak__why { font-size: 0.85rem; color: var(--muted); text-align: right; }
+
+/* ---------- Today rows, one per script ---------- */
+.today__rows { display: grid; gap: 8px; }
+@media (min-width: 720px) { .today__rows, .today .switch { grid-column: 1 / -1; } }
+.today__row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 14px; padding: 10px 12px; border-radius: 12px; background: var(--sunk); }
+.today__native { grid-row: span 2; font-size: 1.5rem; min-width: 2.6em; color: var(--accent); }
+.today__native:lang(ja) { font-family: var(--font-textbook); }
+.today__what { display: grid; line-height: 1.3; }
+.today__what .muted { font-size: 0.92rem; }
+.today__action { grid-column: 2; }
+.today__action .btn { width: 100%; }
+.today__action .extra { gap: 6px; }
+.today__action .extra .btn { flex: 1 1 140px; min-height: 42px; }
+@media (min-width: 720px) {
+  .today__row { grid-template-columns: auto 1fr auto; }
+  .today__native { grid-row: auto; }
+  .today__action { grid-column: auto; }
+  .today__action .btn { width: auto; }
+}
+.script .prog { margin-bottom: 14px; }
+.check-group { font-size: 0.85rem; color: var(--muted); font-weight: 700; margin-top: 4px; }
+.answer__name { color: var(--muted); font-size: 0.95rem; text-align: center; }
+
+/* Korean: rounded Gowun Dodum for textbook style, Noto Sans KR for print */
+:lang(ko).glyph--textbook, .glyph--textbook :lang(ko), :lang(ko) .glyph--textbook, .glyph--textbook:lang(ko) { font-family: "Gowun Dodum", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; font-weight: 400; }
+:lang(ko).glyph--print, .glyph--print:lang(ko) { font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; font-weight: 500; }
+.chip-ch :lang(ko), .weak__ch:lang(ko), .unit__ch:lang(ko), .today__native:lang(ko), .script__native:lang(ko), .deck__native:lang(ko) { font-family: "Gowun Dodum", "Noto Sans KR", "Apple SD Gothic Neo", sans-serif; }
+.choice span[lang] + span[lang] { margin-left: 4px; }
+
+/* Korean two-set keyboard */
+.kb--rows { gap: 4px; }
+.kb__line { display: flex; gap: 4px; padding-left: calc(var(--indent) * 22px); }
+.kb__line .kb__key { width: 42px; font-family: "Noto Sans KR", "Apple SD Gothic Neo", sans-serif; }
+.part--initial .part__kind { background: var(--accent-soft); color: var(--accent); }
+.part--final .part__kind { background: var(--t-learning); color: var(--ink); }
+.part__sym { white-space: nowrap; }
