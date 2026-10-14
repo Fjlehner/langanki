@@ -167,7 +167,7 @@ function welcomeHTML() {
     <ul class="welcome__points">
       <li><strong>Spaced repetition.</strong> The FSRS scheduler (the one in current Anki) brings each card back just before you’d forget it.</li>
       <li><strong>Both directions.</strong> Read the character, then write it from its sound once you know it.</li>
-      <li><strong>Quiet mode.</strong> Recognition only, no sound, for the office.</li>
+      <li><strong>Quiet mode.</strong> No headphones, a shared space, or just not in the mood for audio? Quiet mode turns off sound and sticks to reading cards. Switch it on or off anytime.</li>
       <li><strong>No account, no email.</strong> After your first session you get a 10-character code. It works like a password: it’s the only key to your progress, and no name, email or other personal information is ever stored. Keep it private.</li>
       <li><strong>Any device.</strong> Enter your code on a phone, tablet or computer to pick up where you left off. Bookmark the site, or install it to open it like an app: on iPhone, Share › Add to Home Screen; on Android, the browser menu › Add to Home screen or Install app; in Chrome or Edge on a computer, the install icon in the address bar; in Safari on a Mac, File › Add to Dock.</li>
     </ul>
