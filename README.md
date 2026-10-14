@@ -22,6 +22,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 - **Typing:** phones and tablets use their own language keyboard. Desktops also get an on-screen kana keyboard laid out like a kana table.
 - **Audio:** the browser's built-in voices. If a device has no voice for a language, play buttons are hidden. Recorded clips can be dropped in later through `RECORDINGS` in `public/js/speech.js`.
 - **Installable:** a web app manifest and icons (`public/manifest.webmanifest`, `public/icons/`) let it be installed from phone browsers (Add to Home Screen) and desktop Chrome, Edge and Safari (Add to Dock), opening in its own window like an app.
+- **Open on your phone:** on computers, the welcome page shows a QR code of the site address with a reminder to enter your code on the phone. It's generated in the browser (`public/js/qr.js`, using qrcode-generator, MIT, in `public/js/vendor/`) and hidden on phones and tablets.
 - **Codes instead of accounts:** a 10-character code saves progress on the server and opens it on other devices, with restore links, replacing and erasing.
 
 ## Run it locally
@@ -62,6 +63,7 @@ python3 tests/sync_e2e.py http://127.0.0.1:8787       # codes and sync across de
 | `public/js/scripts/japanese.js` | Hiragana and katakana data, pronunciation parts, word lists, keyboard layouts |
 | `public/js/scripts/hebrew.js` | Hebrew letters, vowel points, words and cursive |
 | `public/manifest.webmanifest`, `public/icons/` | Home-screen app name and icons |
+| `public/js/qr.js`, `public/js/vendor/qrcode.js` | QR code for opening the site on a phone |
 | `public/fonts/` | Gveret Levin cursive Hebrew font and its license |
 | `public/js/scripts/korean.js` | Hangul letters, syllable blocks and words; block composition and romanization |
 | `public/js/scripts/index.js` | All scripts and decks, study scopes and word helpers; Hebrew and Hindi are listed as coming next |

@@ -5,6 +5,7 @@ import { Session, parseId, deckCounts, deckLocked, lockedBy, resetDeck, freshBey
 import { canSpeak, speak, stopSpeaking, onVoices, voicesReady } from './speech.js';
 import { isMobileDevice, now } from './device.js';
 import { learnedByDeck, weakSpots, upNext } from './progress.js';
+import { fillQRs } from './qr.js';
 import {
   apiAvailable, getCode, formatCode, restoreLink, normalizeCode, isValidCode, createProfile, fetchProfile, adoptCode,
   pull, push, rotateCode, eraseRemote, forgetCode, onStatus, getStatus, mergeStates,
@@ -135,6 +136,7 @@ function render() {
   app.className = `screen-${name}`;
   app.innerHTML = (chrome ? header() : '') + `<main class="page" id="main">${body}</main>` + (chrome ? footer() : '');
   after[name]?.();
+  if (!mobile) fillQRs(app);
   const focus = app.querySelector('[data-autofocus]');
   if (focus) focus.focus({ preventScroll: true });
 }
@@ -164,6 +166,7 @@ function welcomeHTML() {
       </div>
       <p class="error" id="restore-error" role="alert" hidden></p>
     </form>
+    ${mobile ? '' : phoneQR(location.origin + '/', 'Open on your phone', 'Scan with your phone’s camera to open LangAnki there. To bring your progress along, tap “I have a code” on your phone and enter your code.')}
     <ul class="welcome__points">
       <li><strong>Spaced repetition.</strong> The FSRS scheduler (the one in current Anki) brings each card back just before you’d forget it.</li>
       <li><strong>Both directions.</strong> Read the character, then write it from its sound once you know it.</li>
@@ -186,6 +189,14 @@ function totals(t = now(), scope = null) {
     learning += c.learning;
   }
   return { review, fresh, learning, due: review + learning, any: review + learning + fresh };
+}
+
+// Desktop only: a QR code for continuing on a phone. Filled in after render.
+function phoneQR(url, title, text) {
+  return `<aside class="qr" aria-label="${esc(title)}">
+    <div class="qr__code" data-qr="${esc(url)}" data-qr-label="QR code for ${esc(title.toLowerCase())}"></div>
+    <div class="qr__text"><strong>${esc(title)}</strong><p class="muted small">${esc(text)}</p></div>
+  </aside>`;
 }
 
 function codeBanner() {

@@ -96,6 +96,7 @@ try:
         page.goto(BASE + "?device=mobile")
         page.wait_for_selector(".welcome")
         shot(page, "01-phone-welcome")
+        assert page.locator(".qr").count() == 0, "no QR code on phones"
 
         page.click("text=I have a code")
         page.fill("#restore-code", "abc")
@@ -354,6 +355,14 @@ try:
         page.on("pageerror", lambda e: errors.append(str(e)))
         page.on("console", lambda m: errors.append(m.text) if m.type == "error" and "Failed to load resource" not in m.text else None)
         page.goto(BASE + "?device=desktop")
+        page.wait_for_selector(".qr svg")
+        qr_png = os.path.join(OUT, "27-desktop-welcome-qr.png")
+        page.locator(".qr__code").screenshot(path=qr_png)
+        shot(page, "27b-desktop-welcome")
+        import zxingcpp
+        from PIL import Image
+        found = zxingcpp.read_barcodes(Image.open(qr_png))
+        assert found and found[0].text == BASE, [r.text for r in found]
         page.click("[data-act=start]")
         page.wait_for_selector(".today")
         shot(page, "20-desktop-home")

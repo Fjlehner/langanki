@@ -102,6 +102,12 @@ with sync_playwright() as p:
     b.wait_for_timeout(1500)
     assert len(cards(b, "kata:")) == 0, "the reset must not come back from A"
 
+    # The code page has no QR code (it's only on the welcome page).
+    b.goto(BASE + "/?device=desktop")
+    b.click("[data-go=code]")
+    b.wait_for_selector(".code-big")
+    assert b.locator(".qr").count() == 0
+
     # Device C uses the restore link.
     c = browser.new_context().new_page()
     watch(c, "C")
