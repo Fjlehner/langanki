@@ -1,3 +1,6 @@
+/* Hebrew cursive font, hosted with the app (SIL Open Font License, see fonts/gveret-levin-OFL.txt). */
+@font-face { font-family: "Gveret Levin"; src: url("fonts/gveret-levin-hebrew.woff2") format("woff2"); font-display: swap; unicode-range: U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+
 /* LangAnki: warm paper, dark ink, one vermilion accent. Phone first; the card is the loudest thing. */
 :root {
   --bg: #f4f1ea;
@@ -447,3 +450,13 @@ select { min-height: 46px; padding: 8px 12px; font: 1rem var(--font-ui); color: 
 .tab__soon { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 6px; }
 @media (max-width: 520px) { .tab__name { display: none; } .tab.is-active .tab__name { display: inline; } }
 .today--soon .muted { font-size: 0.95rem; }
+
+/* Hebrew: right to left. Frank Ruhl Libre (book style, clear vowel points) for textbook, Noto Sans Hebrew for print, Gveret Levin for cursive */
+:lang(he) { unicode-bidi: isolate; }
+.glyph:lang(he), .typed__input:lang(he), .word__text:lang(he), .plain-word { direction: rtl; }
+:lang(he).glyph--textbook, .glyph--textbook:lang(he) { font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", "Times New Roman", serif; font-weight: 500; }
+:lang(he).glyph--print, .glyph--print:lang(he) { font-family: "Noto Sans Hebrew", "Arial Hebrew", Arial, sans-serif; font-weight: 500; }
+.glyph--cursive, .glyph--cursive:lang(he), .chip-ch--cursive :lang(he) { font-family: "Gveret Levin", cursive; font-weight: 400; }
+.chip-ch :lang(he), .weak__ch:lang(he), .unit__ch:lang(he), .tab__native:lang(he), .script__native:lang(he), .deck__native:lang(he), .plain-word { font-family: "Frank Ruhl Libre", "Noto Serif Hebrew", serif; }
+.glyph:lang(he) { line-height: 1.25; }
+.part__kind { text-transform: none; letter-spacing: 0; font-size: 0.78rem; }

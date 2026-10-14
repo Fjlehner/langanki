@@ -151,7 +151,7 @@ function welcomeHTML() {
   return `<section class="welcome">
     <div class="welcome__glyphs" aria-hidden="true"><span lang="ja">あ</span><span lang="ko">한</span><span lang="he">א</span><span lang="hi">अ</span></div>
     <h1 tabindex="-1">Learn to read new writing systems, one card at a time.</h1>
-    <p class="lede">LangAnki is a flashcard course for scripts: Japanese hiragana and katakana and Korean Hangul, with Hebrew and Hindi to follow. It shows each character when you’re about to forget it, and explains every sound with IPA and comparisons to English and Spanish.</p>
+    <p class="lede">LangAnki is a flashcard course for scripts: Japanese hiragana and katakana, Korean Hangul and Hebrew, with Hindi to follow. It shows each character when you’re about to forget it, and explains every sound with IPA and comparisons to English and Spanish.</p>
     <div class="actions">
       <button class="btn btn--primary" data-act="start">Start learning</button>
       <button class="btn" data-act="show-restore">I have a code</button>
@@ -307,7 +307,7 @@ function progressHTML(t, script) {
   const learnedHTML = learned.length
     ? learned.map((g) => `<div class="prog__deck">
         <div class="prog__deckhead"><strong>${esc(g.deck.name)}</strong><span class="muted">${g.items.length} of ${g.total}${g.writing ? ` · ${g.writing} can write` : ''}</span></div>
-        <div class="chips">${g.items.map((it) => `<span class="chip-ch chip-ch--${it.status}" title="${esc(it.romaji)}"><span lang="${it.lang}">${esc(it.label)}</span></span>`).join('')}</div>
+        <div class="chips">${g.items.map((it) => `<span class="chip-ch chip-ch--${it.status} ${g.deck.cursive ? 'chip-ch--cursive' : ''}" title="${esc(it.romaji)}"><span lang="${it.lang}">${esc(it.label)}</span></span>`).join('')}</div>
       </div>`).join('')
     : '<p class="muted">Characters appear here once they’ve made it through their first short reviews.</p>';
 
@@ -318,7 +318,7 @@ function progressHTML(t, script) {
 
   const nextHTML = `${next.fresh.map((f) => `<div class="next">
         <div class="prog__deckhead"><strong>${esc(f.deck.name)}</strong><span class="muted">${esc(f.groups.join(', '))}</span></div>
-        <div class="chips">${f.items.map((it) => `<span class="chip-ch chip-ch--next" title="${esc(it.romaji)}"><span lang="${f.deck.htmlLang}">${esc(it.char)}</span></span>`).join('')}</div>
+        <div class="chips">${f.items.map((it) => `<span class="chip-ch chip-ch--next ${f.deck.cursive ? 'chip-ch--cursive' : ''}" title="${esc(it.romaji)}"><span lang="${f.deck.htmlLang}">${esc(it.char)}</span></span>`).join('')}</div>
       </div>`).join('') || '<p class="muted">No new characters waiting today.</p>'}
     ${next.milestones.map((m) => `<div class="milestone"><div class="prog__deckhead"><span><strong>${m.done} of ${m.total} basic ${esc(m.base)}</strong></span><span class="muted">${m.total - m.done} to go</span></div><p class="small muted">All ${m.total} unlock ${esc(m.unlocks)}.</p><div class="bar" aria-hidden="true"><span style="width:${(m.done / m.total) * 100}%"></span></div></div>`).join('')}
     ${next.due ? `<p class="muted small">Next review ${whenText(next.due, t)}.</p>` : ''}`;
@@ -415,8 +415,8 @@ function finishSession() {
   ensureCode();
 }
 
-function glyphClass() {
-  return `glyph glyph--${state.settings.kanaStyle}`;
+function glyphClass(deck) {
+  return deck?.cursive ? 'glyph glyph--cursive' : `glyph glyph--${state.settings.kanaStyle}`;
 }
 
 const DIR_LABEL = { r: 'Read it', p: 'Write it' };
@@ -444,10 +444,10 @@ function studyHTML() {
   let front, back = '', actions;
 
   if (deck.kind === 'words') {
-    front = `<div class="${glyphClass()} glyph--word" lang="${deck.htmlLang}">${esc(item.text)}</div>`;
+    front = `<div class="${glyphClass(deck)} glyph--word" lang="${deck.htmlLang}">${esc(item.text)}</div>`;
     if (view.revealed) back = wordBackHTML(deck, item, sound);
   } else if (dir === 'r') {
-    front = `<div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
+    front = `<div class="${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
     if (view.revealed) back = charBackHTML(deck, item, sound, { open: view.wasNew });
   } else {
     front = productionFrontHTML(deck, item, sound);
@@ -498,7 +498,7 @@ function charBackHTML(deck, item, sound, { open = false, hideRomaji = false } = 
       <div class="answer__ipa">[${esc(item.ipa)}]</div>
       ${sound ? soundButton(item.say, deck.lang) : ''}
     </div>
-    ${item.name ? `<p class="answer__name">Letter name: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
+    ${item.name ? `<p class="answer__name">${esc(item.nameLabel || 'Letter name')}: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
     ${guideHTML(item, { open })}`;
 }
 
@@ -506,13 +506,14 @@ function wordBackHTML(deck, item, sound) {
   const units = wordBreakdown(deck, item.text);
   const parts = units.map((u) => `<span class="unit"><span class="unit__ch" lang="${deck.htmlLang}">${esc(u.ch)}</span><span class="unit__r">${esc(u.r)}</span></span>`).join('');
   const blockwise = units.map((u) => u.r).join('');
-  const changed = deck.breakdown && blockwise.replace(/[^a-z]/g, '') !== item.romaji.replace(/[^a-z]/g, '');
+  const changed = deck.htmlLang === 'ko' && blockwise.replace(/[^a-z]/g, '') !== item.romaji.replace(/[^a-z]/g, '');
   return `<div class="answer">
       <div class="answer__romaji">${esc(item.romaji)}</div>
       ${sound ? soundButton(item.say, deck.lang) : ''}
     </div>
     <dl class="meaning"><div><dt>English</dt><dd>${esc(item.en)}</dd></div><div><dt>Español</dt><dd lang="es">${esc(item.es)}</dd></div></dl>
-    <div class="units" aria-label="Characters">${parts}</div>
+    ${item.plain ? `<p class="small muted">Without vowel points: <span class="plain-word" lang="${deck.htmlLang}">${esc(item.plain)}</span></p>` : ''}
+    <div class="units" aria-label="Characters" dir="${deck.rtl ? 'rtl' : 'ltr'}">${parts}</div>
     ${changed ? `<p class="small muted">Sounds change across blocks: written ${esc(blockwise)}, said ${esc(item.romaji)}.</p>` : ''}`;
 }
 
@@ -529,16 +530,16 @@ function productionFrontHTML(deck, item, sound) {
       <label class="sr-only" for="typed">Your answer</label>
       <input id="typed" class="typed__input glyph--${state.settings.kanaStyle}" lang="${deck.htmlLang}" value="${esc(view.typed)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" data-autofocus>
     </form>
-    ${mobile ? `<p class="muted small">Use your ${{ ja: 'Japanese kana', ko: 'Korean' }[deck.htmlLang] || ''} keyboard.</p>` : ''}
+    ${mobile ? `<p class="muted small">Use your ${{ ja: 'Japanese kana', ko: 'Korean', he: 'Hebrew' }[deck.htmlLang] || ''} keyboard.</p>` : ''}
   </div>`;
 }
 
 function productionResultHTML(deck, item) {
   const typed = view.typed.trim();
-  if (view.correct) return `<p class="result result--ok"><span aria-hidden="true">✓</span> Correct</p><div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
+  if (view.correct) return `<p class="result result--ok"><span aria-hidden="true">✓</span> Correct</p><div class="${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
   const wrongScript = typed && deck.htmlLang === 'ja' && toOtherScript(typed) === item.char;
   const msg = !typed ? 'The answer is' : wrongScript ? `Right sound, other script. You wrote ${esc(typed)}; in ${esc(deck.name.toLowerCase())} it’s` : `You wrote <span lang="${deck.htmlLang}">${esc(typed)}</span>. The answer is`;
-  return `<p class="result result--err"><span aria-hidden="true">✗</span> ${msg}</p><div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
+  return `<p class="result result--err"><span aria-hidden="true">✗</span> ${msg}</p><div class="${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(item.char)}</div>`;
 }
 
 const toOtherScript = (s) => s.replace(/[ぁ-ゖァ-ヶ]/g, (ch) => {
@@ -569,7 +570,7 @@ function kanaKeyboardHTML(deck) {
 function guideHTML(item, { open = false } = {}) {
   const kinds = { consonant: 'Consonant', vowel: 'Vowel', glide: 'Glide', initial: 'Start of block', final: 'End of block' };
   const parts = item.parts.map((p) => `<li class="part part--${p.kind}">
-      <div class="part__head"><span class="part__sym">${esc(p.sym)}</span><span class="part__kind">${kinds[p.kind]}</span><span class="part__ipa">/${esc(p.ipa)}/</span></div>
+      <div class="part__head"><span class="part__sym">${esc(p.sym)}</span><span class="part__kind">${esc(p.label || kinds[p.kind])}</span><span class="part__ipa">/${esc(p.ipa)}/</span></div>
       <p class="part__type">${esc(p.type)}. ${esc(p.how)}</p>
       <p class="cmp"><span class="cmp__lang">EN</span> ${esc(p.en)}</p>
       <p class="cmp"><span class="cmp__lang">ES</span> ${esc(p.es)}</p>
@@ -706,7 +707,7 @@ function browseHTML() {
       <h3 class="group__name">${esc(g.name)}</h3>
       <div class="tiles">${g.items.map((it) => {
         const st = itemStatus(state, deck, it);
-        return `<button class="tile tile--${st}" data-guide="${it.id}" aria-label="${esc(it.char)}, ${esc(it.romaji)}, ${st}"><span class="tile__ch ${glyphClass()}" lang="${deck.htmlLang}">${esc(it.char)}</span><span class="tile__r">${esc(it.romaji)}</span></button>`;
+        return `<button class="tile tile--${st}" data-guide="${it.id}" aria-label="${esc(it.char)}, ${esc(it.romaji)}, ${st}"><span class="tile__ch ${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(it.char)}</span><span class="tile__r">${esc(it.romaji)}</span></button>`;
       }).join('')}</div>
     </section>`).join('');
   return `<div class="browse">
@@ -723,7 +724,7 @@ function wordsBrowseHTML(deck) {
   const rows = deck.items.map((w) => {
     const c = state.cards[cardId(deck.id, w.id, 'r')];
     const seen = c && c.st !== NEW;
-    return `<li class="word ${seen ? '' : 'word--unseen'}"><span class="word__text ${glyphClass()}" lang="${deck.htmlLang}">${esc(w.text)}</span><span class="word__r">${seen ? esc(w.romaji) : ''}</span><span class="word__m">${seen ? `${esc(w.en)} · <span lang="es">${esc(w.es)}</span>` : '<span class="muted">Not studied yet</span>'}</span></li>`;
+    return `<li class="word ${seen ? '' : 'word--unseen'}"><span class="word__text ${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(w.text)}</span><span class="word__r">${seen ? esc(w.romaji) : ''}</span><span class="word__m">${seen ? `${esc(w.en)} · <span lang="es">${esc(w.es)}</span>` : '<span class="muted">Not studied yet</span>'}</span></li>`;
   }).join('');
   return `<div class="browse">
     <button class="link back" data-go="home">← Overview</button>
@@ -743,9 +744,9 @@ function guideScreenHTML() {
   return `<div class="guide-page">
     <button class="link back" data-browse="${deck.id}">← ${esc(deck.name)}</button>
     <div class="guide-page__hero">
-      <div class="${glyphClass()}" lang="${deck.htmlLang}">${esc(item.char)}</div>
+      <div class="${glyphClass(deck)}" lang="${deck.htmlLang}">${esc(item.char)}</div>
       <div class="answer"><div class="answer__romaji">${esc(item.romaji)}</div><div class="answer__ipa">[${esc(item.ipa)}]</div>${sound ? soundButton(item.say, deck.lang) : ''}</div>
-      ${item.name ? `<p class="answer__name">Letter name: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
+      ${item.name ? `<p class="answer__name">${esc(item.nameLabel || 'Letter name')}: <span lang="${deck.htmlLang}">${esc(item.name)}</span> (${esc(item.nameRomaji)})</p>` : ''}
     </div>
     ${guideHTML(item, { open: true })}
     <nav class="pager" aria-label="Other characters">
@@ -805,8 +806,8 @@ function settingsHTML() {
       <fieldset class="field">
         <legend>Character style</legend>
         <div class="choices">
-          <label class="choice"><input type="radio" name="kanaStyle" value="textbook" ${s.kanaStyle === 'textbook' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--textbook" lang="ja">さきり</span><span class="glyph--textbook" lang="ko">한글</span> Textbook</label>
-          <label class="choice"><input type="radio" name="kanaStyle" value="print" ${s.kanaStyle === 'print' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--print" lang="ja">さきり</span><span class="glyph--print" lang="ko">한글</span> Print</label>
+          <label class="choice"><input type="radio" name="kanaStyle" value="textbook" ${s.kanaStyle === 'textbook' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--textbook" lang="ja">さきり</span><span class="glyph--textbook" lang="ko">한글</span><span class="glyph--textbook" lang="he">אבג</span> Textbook</label>
+          <label class="choice"><input type="radio" name="kanaStyle" value="print" ${s.kanaStyle === 'print' ? 'checked' : ''} data-setting="kanaStyle"><span class="glyph--print" lang="ja">さきり</span><span class="glyph--print" lang="ko">한글</span><span class="glyph--print" lang="he">אבג</span> Print</label>
         </div>
         <p class="help">Textbook shapes look like handwriting. Print is what you’ll see on signs and screens.</p>
       </fieldset>

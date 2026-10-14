@@ -1,11 +1,12 @@
-// All writing systems. Japanese and Korean are built; the others are listed as coming next.
+// All writing systems. Japanese, Korean and Hebrew are built; Hindi is listed as coming next.
 import { JAPANESE } from './japanese.js';
 import { KOREAN } from './korean.js';
+import { HEBREW } from './hebrew.js';
 
 export const SCRIPTS = [
   JAPANESE,
   KOREAN,
-  { id: 'he', name: 'Hebrew', native: 'עברית', htmlLang: 'he', soon: true, blurb: 'Print letters and vowel points, then cursive.' },
+  HEBREW,
   { id: 'hi', name: 'Hindi', native: 'हिन्दी', htmlLang: 'hi', soon: true, blurb: 'Devanagari vowels, consonants, matras and conjuncts.' },
 ];
 export const BUILT = SCRIPTS.filter((s) => !s.soon);
@@ -16,7 +17,12 @@ export const deckById = (id) => DECKS.find((d) => d.id === id);
 export const decksIn = (scope) => (BUILT.find((s) => s.id === scope)?.decks.map((d) => d.id)) || [scope];
 export const scriptOf = (scope) => BUILT.find((s) => s.id === scope) || BUILT.find((s) => s.id === deckById(scope)?.script);
 
-for (const s of BUILT) for (const d of s.decks) d.htmlLang ||= s.htmlLang || s.id;
+for (const s of BUILT) {
+  for (const d of s.decks) {
+    d.htmlLang ||= s.htmlLang || s.id;
+    d.rtl = d.htmlLang === 'he';
+  }
+}
 
 // Flatten each character deck's items, tagged with their group.
 for (const d of DECKS) {

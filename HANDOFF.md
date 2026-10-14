@@ -4,7 +4,7 @@ Paste or attach this file in a new chat to pick the project up where it left off
 
 ## What it is
 
-LangAnki is a free, browser-based flashcard app for learning writing systems, built like Anki. Japanese hiragana and katakana and Korean Hangul are built; Hebrew and Hindi (Devanagari) come next. It's a personal project for Joe, shared with family and friends, and runs on Cloudflare's free `workers.dev` address. It's a sibling of Unlearn (`Fjlehner/unlearn_h_and_t`) and reuses its code system.
+LangAnki is a free, browser-based flashcard app for learning writing systems, built like Anki. Japanese hiragana and katakana, Korean Hangul and Hebrew are built; Hindi (Devanagari) comes next. It's a personal project for Joe, shared with family and friends, and runs on Cloudflare's free `workers.dev` address. It's a sibling of Unlearn (`Fjlehner/unlearn_h_and_t`) and reuses its code system.
 
 ## Where things live
 
@@ -61,9 +61,18 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 - Joe asked that Korean not depend on Japanese progress; each script's decks unlock only from within the script.
 - The overview has a tab per language at the top (Joe's request), with a badge for cards waiting; Hebrew and Hindi tabs say they're coming next. The selected tab (`settings.tab`) shows that language's Today card, progress panels and decks, and is remembered. Study scopes are script ids (`ja`, `ko`) or deck ids.
 
+## Hebrew (built October 14, 2026)
+
+- `scripts/hebrew.js`: decks `he-letters` (27 print letters as the base set, plus 5 dotted forms that are recognition only), `he-points` (13 vowel points shown on מ or א; recognition only, since typing points is impractical on phones), `he-words` (45 words with points; the card also shows the unpointed spelling; `needsOf` strips points to find letters) and `he-cursive` (the 27 letters in cursive; recognition only). Points, words and cursive unlock after the 27 print letters, with a start-early button.
+- Two-sound letters (ב כ פ ש) carry two guide parts with `label`s such as "With a dot: בּ". ח is romanized ch and כ without a dot kh; letters that share a sound (ט/ת, כּ/ק, ס/שׂ, א/ע) show their name as a hint on writing cards.
+- Fonts: Frank Ruhl Libre (textbook style, clear vowel points), Noto Sans Hebrew (print), and Gveret Levin for cursive, self-hosted in `public/fonts` (OFL) so cursive never falls back to print. Hebrew elements get `direction: rtl`; decks have `rtl: true`.
+- Pronunciation is modern Israeli: ר is a uvular [ʁ], ע usually silent, ח/כ = Spanish “j” in “jota”.
+
 ## Known gaps and ideas for next
 
-- Build Hebrew (print, then cursive) and Hindi.
+- **Review the Hangul section with Joe in detail** (he asked to do this at another time).
+
+- Build Hindi.
 - Stroke order for kana.
 - Recorded audio where browser voices are poor (`RECORDINGS` in `speech.js`).
 - Fonts for the other scripts (for example Noto Sans KR, Noto Sans Hebrew, Noto Sans Devanagari) and a cursive Hebrew font.

@@ -109,6 +109,7 @@ try:
         assert page.locator("[data-study=kata]").count() == 0, "katakana should start locked"
         assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1
         assert page.locator(".tab").count() == 4, "a tab per language"
+        assert page.locator(".tab--soon").count() == 1, "only Hindi is still coming"
         assert page.get_attribute(".tab.is-active", "data-tab") == "ja"
         assert "10 new cards" in page.inner_text(".today__line")
 
@@ -275,8 +276,56 @@ try:
         page.goto(BASE)
         assert page.get_attribute(".tab.is-active", "data-tab") == "ko", "the tab is remembered"
         shot(page, "16-phone-home-two-scripts")
-        page.click("[data-tab=he]")
+        page.click("[data-tab=hi]")
         assert "coming next" in page.inner_text("h1")
+
+        # Hebrew: print letters first; vowel points, cursive and words wait for the 27 letters.
+        page.click("[data-tab=he]")
+        assert page.locator("[data-act=unlock-early][data-deck=he-cursive]").count() == 1
+        assert page.locator("[data-act=unlock-early][data-deck=he-points]").count() == 1
+        page.click("[data-study=he-letters]")
+        page.wait_for_selector(".card")
+        assert page.evaluate("getComputedStyle(document.querySelector('.glyph')).direction") == "rtl"
+        page.click("[data-act=reveal]")
+        shot(page, "17-phone-hebrew-back")
+        page.click(GOT_IT)
+        study_all(page)
+        page.click("[data-go=home]")
+        page.click("[data-browse=he-letters]")
+        page.click(".tile:has-text('ב')")
+        page.wait_for_selector(".guide-page")
+        txt = page.inner_text(".guide-page")
+        page.screenshot(path=os.path.join(OUT, "18-phone-hebrew-guide.png"), full_page=True)
+        assert "With a dot" in txt and "Without" in txt and "vine" in txt, txt[:400]
+        page.screenshot(path=os.path.join(OUT, "18-phone-hebrew-guide.png"), full_page=True)
+        page.evaluate("""async () => {
+          const { deckById } = await import('/js/scripts/index.js');
+          const s = JSON.parse(localStorage.getItem('langanki.v1'));
+          const t = Date.now() + Number(sessionStorage.getItem('langanki.clockOffset'));
+          for (const it of deckById('he-letters').items.filter((i) => i.base)) {
+            s.cards[`he-letters:${it.id}:r`] = { st: 2, s: 5, d: 5, step: 0, due: t + 5 * 864e5, last: t - 2 * 864e5, reps: 3, lapses: 0 };
+          }
+          localStorage.setItem('langanki.v1', JSON.stringify(s));
+        }""")
+        page.goto(BASE)
+        page.wait_for_selector("[data-study=he-cursive]")
+        page.click("[data-study=he-cursive]")
+        page.wait_for_selector(".glyph--cursive")
+        assert "Gveret" in page.evaluate("getComputedStyle(document.querySelector('.glyph')).fontFamily")
+        page.click("[data-act=reveal]")
+        shot(page, "19-phone-hebrew-cursive")
+        page.goto(BASE)
+        page.click("[data-study=he-words]")
+        page.wait_for_selector(".glyph--word")
+        page.click("[data-act=reveal]")
+        assert page.locator(".plain-word").count() == 1
+        shot(page, "19b-phone-hebrew-word")
+        page.goto(BASE)
+        page.click("[data-study=he-points]")
+        page.wait_for_selector(".card")
+        page.click("[data-act=reveal]")
+        shot(page, "19c-phone-hebrew-points")
+        page.goto(BASE)
         page.click("[data-tab=ja]")
         page.screenshot(path=os.path.join(OUT, "16b-phone-home-full.png"), full_page=True)
 
