@@ -21,7 +21,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 - **Quiet mode:** recognition only, no sound, for places where audio isn't an option.
 - **Typing:** phones and tablets use their own language keyboard. Desktops also get an on-screen kana keyboard laid out like a kana table.
 - **Audio:** the browser's built-in voices. If a device has no voice for a language, play buttons are hidden. Recorded clips can be dropped in later through `RECORDINGS` in `public/js/speech.js`.
-- **Installable:** a web app manifest and icons (`public/manifest.webmanifest`, `public/icons/`) let it be added to a phone's home screen and open full screen like an app.
+- **Installable:** a web app manifest and icons (`public/manifest.webmanifest`, `public/icons/`) let it be installed from phone browsers (Add to Home Screen) and desktop Chrome, Edge and Safari (Add to Dock), opening in its own window like an app.
 - **Codes instead of accounts:** a 10-character code saves progress on the server and opens it on other devices, with restore links, replacing and erasing.
 
 ## Run it locally

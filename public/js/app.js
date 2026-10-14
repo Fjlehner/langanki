@@ -169,7 +169,7 @@ function welcomeHTML() {
       <li><strong>Both directions.</strong> Read the character, then write it from its sound once you know it.</li>
       <li><strong>Quiet mode.</strong> Recognition only, no sound, for the office.</li>
       <li><strong>No account, no email.</strong> After your first session you get a 10-character code. It works like a password: it’s the only key to your progress, and no name, email or other personal information is ever stored. Keep it private.</li>
-      <li><strong>Any device.</strong> Enter your code on a phone, tablet or computer to pick up where you left off. Bookmark the site, or add it to your home screen to open it like an app: on iPhone, tap Share › Add to Home Screen; on Android, open the browser menu › Add to Home screen or Install app.</li>
+      <li><strong>Any device.</strong> Enter your code on a phone, tablet or computer to pick up where you left off. Bookmark the site, or install it to open it like an app: on iPhone, Share › Add to Home Screen; on Android, the browser menu › Add to Home screen or Install app; in Chrome or Edge on a computer, the install icon in the address bar; in Safari on a Mac, File › Add to Dock.</li>
     </ul>
   </section>`;
 }
@@ -869,7 +869,7 @@ function codeHTML() {
       ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
       <p class="code-big" aria-label="Your code">${formatCode(code)}</p>
       <p>Your code works like a password: it’s the only way into your progress, and no name or email is stored with it. Enter it on another device, or open the restore link, to continue there. Keep it private, since anyone with it can open your progress.</p>
-      <p class="muted small">Tip: save the restore link as a bookmark, or add the site to your home screen (iPhone: Share › Add to Home Screen; Android: browser menu › Add to Home screen or Install app) to open LangAnki like an app.</p>
+      <p class="muted small">Tip: save the restore link as a bookmark, or install the site to open LangAnki like an app (iPhone: Share › Add to Home Screen; Android: browser menu › Install app; Chrome or Edge: the install icon in the address bar; Safari on a Mac: File › Add to Dock).</p>
       <div class="actions">
         <button class="btn btn--primary" data-act="copy-code">Copy code</button>
         <button class="btn" data-act="copy-link">Copy restore link</button>
