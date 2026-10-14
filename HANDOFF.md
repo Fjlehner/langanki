@@ -68,6 +68,11 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 - Fonts: Frank Ruhl Libre (textbook style, clear vowel points), Noto Sans Hebrew (print), and Gveret Levin for cursive, self-hosted in `public/fonts` (OFL) so cursive never falls back to print. Hebrew elements get `direction: rtl`; decks have `rtl: true`.
 - Pronunciation is modern Israeli: ר is a uvular [ʁ], ע usually silent, ח/כ = Spanish “j” in “jota”.
 
+## Welcome page and installing
+
+- The welcome page says the code works like a password and that no name, email or personal information is stored, and explains using it on any device, bookmarking, or adding it to the home screen (Joe's request).
+- `public/manifest.webmanifest` and `public/icons/` (an あ flashcard on vermilion) make it installable; there is deliberately no service worker, so a deploy can never be hidden behind a stale cache.
+
 ## Known gaps and ideas for next
 
 - **Review the Hangul section with Joe in detail** (he asked to do this at another time).

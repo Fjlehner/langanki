@@ -168,7 +168,8 @@ function welcomeHTML() {
       <li><strong>Spaced repetition.</strong> The FSRS scheduler (the one in current Anki) brings each card back just before you’d forget it.</li>
       <li><strong>Both directions.</strong> Read the character, then write it from its sound once you know it.</li>
       <li><strong>Quiet mode.</strong> Recognition only, no sound, for the office.</li>
-      <li><strong>No account.</strong> A short code saves your progress and opens it on your other devices.</li>
+      <li><strong>No account, no email.</strong> After your first session you get a 10-character code. It works like a password: it’s the only key to your progress, and no name, email or other personal information is ever stored. Keep it private.</li>
+      <li><strong>Any device.</strong> Enter your code on a phone, tablet or computer to pick up where you left off. Bookmark the site, or add it to your home screen to open it like an app: on iPhone, tap Share › Add to Home Screen; on Android, open the browser menu › Add to Home screen or Install app.</li>
     </ul>
   </section>`;
 }
@@ -867,7 +868,8 @@ function codeHTML() {
       <h1 tabindex="-1">Your code</h1>
       ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
       <p class="code-big" aria-label="Your code">${formatCode(code)}</p>
-      <p>Enter this code on another device, or open the restore link, to continue there. Anyone with the code can open your progress, so keep it private.</p>
+      <p>Your code works like a password: it’s the only way into your progress, and no name or email is stored with it. Enter it on another device, or open the restore link, to continue there. Keep it private, since anyone with it can open your progress.</p>
+      <p class="muted small">Tip: save the restore link as a bookmark, or add the site to your home screen (iPhone: Share › Add to Home Screen; Android: browser menu › Add to Home screen or Install app) to open LangAnki like an app.</p>
       <div class="actions">
         <button class="btn btn--primary" data-act="copy-code">Copy code</button>
         <button class="btn" data-act="copy-link">Copy restore link</button>
@@ -880,7 +882,7 @@ function codeHTML() {
     <button class="link back" data-go="home">← Overview</button>
     <h1 tabindex="-1">Codes</h1>
     ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
-    <p>A code saves your progress on the server so you can open it on your other devices. No name or email is needed.</p>
+    <p>A code saves your progress on the server so you can open it on your other devices. It works like a password, and no name, email or other personal information is stored.</p>
     <div class="actions"><button class="btn btn--primary" data-act="get-code" ${apiOK === false ? 'disabled' : ''}>Get my code</button></div>
     <form class="restore" id="restore">
       <label for="restore-code">Already have a code? Enter it to load that progress here.</label>

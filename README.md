@@ -21,6 +21,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 - **Quiet mode:** recognition only, no sound, for places where audio isn't an option.
 - **Typing:** phones and tablets use their own language keyboard. Desktops also get an on-screen kana keyboard laid out like a kana table.
 - **Audio:** the browser's built-in voices. If a device has no voice for a language, play buttons are hidden. Recorded clips can be dropped in later through `RECORDINGS` in `public/js/speech.js`.
+- **Installable:** a web app manifest and icons (`public/manifest.webmanifest`, `public/icons/`) let it be added to a phone's home screen and open full screen like an app.
 - **Codes instead of accounts:** a 10-character code saves progress on the server and opens it on other devices, with restore links, replacing and erasing.
 
 ## Run it locally
@@ -60,6 +61,7 @@ python3 tests/sync_e2e.py http://127.0.0.1:8787       # codes and sync across de
 | `public/js/app.js` | Screens, study player, settings, codes and sync wiring |
 | `public/js/scripts/japanese.js` | Hiragana and katakana data, pronunciation parts, word lists, keyboard layouts |
 | `public/js/scripts/hebrew.js` | Hebrew letters, vowel points, words and cursive |
+| `public/manifest.webmanifest`, `public/icons/` | Home-screen app name and icons |
 | `public/fonts/` | Gveret Levin cursive Hebrew font and its license |
 | `public/js/scripts/korean.js` | Hangul letters, syllable blocks and words; block composition and romanization |
 | `public/js/scripts/index.js` | All scripts and decks, study scopes and word helpers; Hebrew and Hindi are listed as coming next |
