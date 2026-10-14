@@ -59,7 +59,7 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 - `compose`/`decompose`/`typeKey`/`deleteKey` implement two-set keyboard composition (including combined vowels, double finals and a final moving to the next block before a vowel). The desktop keyboard is the dubeolsik layout plus rows for tense consonants and combined vowels.
 - Fonts: Gowun Dodum (textbook) and Noto Sans KR (print), applied by `:lang(ko)`.
 - Joe asked that Korean not depend on Japanese progress; each script's decks unlock only from within the script.
-- The overview's Today card has one row per script (Study, or Learn more / Review early when caught up), and each script section has its own progress panels. Study scopes are script ids (`ja`, `ko`) or deck ids.
+- The overview has a tab per language at the top (Joe's request), with a badge for cards waiting; Hebrew and Hindi tabs say they're coming next. The selected tab (`settings.tab`) shows that language's Today card, progress panels and decks, and is remembered. Study scopes are script ids (`ja`, `ko`) or deck ids.
 
 ## Known gaps and ideas for next
 

@@ -4,6 +4,7 @@ Anki-style flashcards for learning writing systems: Japanese hiragana and kataka
 
 ## What's in this build
 
+- **Language tabs:** the overview has a tab per language with a count of cards waiting; each tab has its own Today card, progress and decks.
 - **Korean:** a Hangul letters deck (14 basic and 5 tense consonants, 21 vowels, each with letter name and its sound at the start and end of a block), a syllable-blocks deck (156 blocks, from simple pairs to finals and double finals) that unlocks after the 24 basic letters, and a Korean words deck. Romanization is Revised Romanization; word cards show block-by-block spelling and note sound changes. Desktop gets a two-set (dubeolsik) on-screen keyboard that composes blocks as you type. Korean doesn't depend on Japanese progress.
 
 - **Decks:** hiragana and katakana (base characters, voiced forms, combinations like きゃ, small っ, long vowels, and katakana sounds for foreign words), plus a hiragana word deck and a katakana word deck with meanings in English and Spanish.

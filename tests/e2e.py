@@ -108,8 +108,9 @@ try:
         # Katakana waits for hiragana: only hiragana is offered at the start.
         assert page.locator("[data-study=kata]").count() == 0, "katakana should start locked"
         assert page.locator("[data-act=unlock-early][data-deck=kata]").count() == 1
-        assert "20 new cards" in page.inner_text(".today__line"), "10 hiragana + 10 Hangul letters"
-        assert page.locator(".today__row").count() == 2, "one Today row per script"
+        assert page.locator(".tab").count() == 4, "a tab per language"
+        assert page.get_attribute(".tab.is-active", "data-tab") == "ja"
+        assert "10 new cards" in page.inner_text(".today__line")
 
         # Day 0: first study session.
         page.click("[data-study=hira]")
@@ -251,6 +252,8 @@ try:
         # Korean: letters first; syllable blocks wait for the 24 basic letters.
         page.goto(BASE)
         page.wait_for_selector(".today")
+        page.click("[data-tab=ko]")
+        assert page.get_attribute(".tab.is-active", "data-tab") == "ko"
         assert page.locator("[data-act=unlock-early][data-deck=hangul-blocks]").count() == 1, "blocks start locked"
         assert page.locator(".deck--locked").filter(has_text="Korean words").count() == 1
         page.click("[data-study=hangul]")
@@ -270,7 +273,11 @@ try:
         assert "giyeok" in page.inner_text(".guide-page") and page.locator(".part--final").count() == 1
         page.screenshot(path=os.path.join(OUT, "15-phone-korean-guide.png"), full_page=True)
         page.goto(BASE)
+        assert page.get_attribute(".tab.is-active", "data-tab") == "ko", "the tab is remembered"
         shot(page, "16-phone-home-two-scripts")
+        page.click("[data-tab=he]")
+        assert "coming next" in page.inner_text("h1")
+        page.click("[data-tab=ja]")
         page.screenshot(path=os.path.join(OUT, "16b-phone-home-full.png"), full_page=True)
 
         # Settings.
@@ -365,6 +372,7 @@ try:
         }""")
         page.goto(BASE)
         page.wait_for_selector(".today")
+        page.click("[data-tab=ko]")
         assert page.locator("[data-study=hangul-blocks]").count() == 1, "blocks unlock after the basic letters"
         assert page.locator("[data-study=ko-words]").count() == 1, "Korean words unlock after the basic letters"
         page.evaluate("""() => { document.querySelector('[data-study=hangul-blocks]').click(); }""")

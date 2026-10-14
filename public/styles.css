@@ -423,3 +423,27 @@ select { min-height: 46px; padding: 8px 12px; font: 1rem var(--font-ui); color: 
 .part--initial .part__kind { background: var(--accent-soft); color: var(--accent); }
 .part--final .part__kind { background: var(--t-learning); color: var(--ink); }
 .part__sym { white-space: nowrap; }
+
+/* ---------- language tabs on the overview ---------- */
+.tabs {
+  display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+  margin: 2px -16px 16px; padding: 0 16px 0; border-bottom: 1px solid var(--line);
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tab {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 8px 14px 10px; margin-bottom: -1px;
+  font: 600 1rem/1 var(--font-ui); color: var(--muted);
+  background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.is-active { color: var(--ink); border-bottom-color: var(--accent); }
+.tab__native { font-size: 1.15rem; color: var(--accent); }
+.tab__native:lang(ja) { font-family: var(--font-textbook); }
+.tab__native:lang(ko) { font-family: "Gowun Dodum", "Noto Sans KR", sans-serif; }
+.tab--soon .tab__native { color: var(--muted); opacity: 0.7; }
+.tab__badge { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 0.78rem; display: inline-grid; place-items: center; }
+.tab__done { color: var(--ok); font-size: 0.9rem; }
+.tab__soon { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 2px 6px; }
+@media (max-width: 520px) { .tab__name { display: none; } .tab.is-active .tab__name { display: inline; } }
+.today--soon .muted { font-size: 0.95rem; }

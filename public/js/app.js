@@ -242,44 +242,56 @@ function deckCardHTML(deck, t) {
   </article>`;
 }
 
-// One row per script in the Today card: what's due, and a way to study or keep going.
-function todayRowHTML(script, t) {
-  const tot = totals(t, script.id);
-  const line = tot.any ? `${plural(tot.due, 'review')} · ${plural(tot.fresh, 'new card')}` : 'Caught up';
-  const action = tot.any
-    ? `<button class="btn btn--primary" data-study="${script.id}">Study ${esc(script.name)}</button>`
-    : extraStudyHTML(t, script.id);
-  return `<div class="today__row">
-    <span class="today__native" lang="${script.htmlLang}" aria-hidden="true">${esc(script.native)}</span>
-    <div class="today__what"><strong>${esc(script.name)}</strong><span class="muted">${line}</span></div>
-    <div class="today__action">${action}</div>
-  </div>`;
+// The selected language tab on the overview.
+function currentTab() {
+  const t = state.settings.tab;
+  return SCRIPTS.some((sc) => sc.id === t) ? t : BUILT[0].id;
+}
+
+function tabsHTML(t) {
+  const sel = currentTab();
+  return `<nav class="tabs" role="tablist" aria-label="Languages">
+    ${SCRIPTS.map((sc) => {
+      const tot = sc.soon ? null : totals(t, sc.id);
+      const badge = sc.soon ? '<span class="tab__soon">soon</span>' : tot.any ? `<span class="tab__badge" aria-label="${tot.any} to study">${tot.any}</span>` : '<span class="tab__done" aria-label="caught up">✓</span>';
+      return `<button class="tab ${sc.id === sel ? 'is-active' : ''} ${sc.soon ? 'tab--soon' : ''}" role="tab" aria-selected="${sc.id === sel}" data-tab="${sc.id}">
+        <span class="tab__native" lang="${sc.htmlLang}" aria-hidden="true">${esc(sc.native)}</span><span class="tab__name">${esc(sc.name)}</span>${badge}
+      </button>`;
+    }).join('')}
+  </nav>`;
 }
 
 function homeHTML() {
   const t = now();
-  const tot = totals(t);
   const msg = flash;
   flash = '';
-  return `${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
+  const sc = SCRIPTS.find((x) => x.id === currentTab());
+  const body = sc.soon
+    ? `<section class="today today--soon">
+        <div><h1 tabindex="-1">${esc(sc.name)} is coming next</h1><p class="today__line">${esc(sc.blurb)}</p></div>
+        <p class="muted">It will work the same way as the other languages: pronunciation guides with IPA and English and Spanish comparisons, reading and writing cards, and its own code-synced progress.</p>
+      </section>`
+    : scriptHomeHTML(sc, t);
+  return `${tabsHTML(t)}
+  ${msg ? `<p class="flash" role="status">${esc(msg)}</p>` : ''}
   ${codeBanner()}
-  <section class="today">
+  <div role="tabpanel" aria-label="${esc(sc.name)}">${body}</div>`;
+}
+
+function scriptHomeHTML(sc, t) {
+  const tot = totals(t, sc.id);
+  return `<section class="today">
     <div>
       <h1 tabindex="-1">${tot.any ? 'Today' : 'All caught up'}</h1>
-      <p class="today__line">${tot.any ? `${plural(tot.due, 'card')} to review and ${plural(tot.fresh, 'new card')}.` : nextDueLine(t)}</p>
+      <p class="today__line">${tot.any ? `${plural(tot.due, 'card')} to review and ${plural(tot.fresh, 'new card')}.` : nextDueLine(t, sc)}</p>
     </div>
-    <div class="today__rows">${BUILT.map((s) => todayRowHTML(s, t)).join('')}</div>
+    ${tot.any ? `<button class="btn btn--primary btn--big" data-study="${sc.id}">Study ${esc(sc.name)}</button>` : extraStudyHTML(t, sc.id)}
     ${quietSwitch()}
   </section>
-  ${BUILT.map((sc) => `<section class="script" aria-labelledby="${sc.id}-h">
-    <div class="script__head"><h2 id="${sc.id}-h">${esc(sc.name)}</h2><span class="script__native" lang="${sc.htmlLang}">${esc(sc.native)}</span></div>
+  <section class="script" aria-label="${esc(sc.name)} decks">
     <p class="tip">${esc(sc.intro)}</p>
     ${progressHTML(t, sc)}
     <div class="decks">${sc.decks.map((d) => deckCardHTML(d, t)).join('')}</div>
-  </section>`).join('')}
-  <section class="script" aria-labelledby="soon-h">
-    <div class="script__head"><h2 id="soon-h">Coming next</h2></div>
-    <div class="soon">${SCRIPTS.filter((sc) => sc.soon).map((sc) => `<div class="soon__item"><span class="soon__native" lang="${sc.htmlLang}">${esc(sc.native)}</span><div><strong>${esc(sc.name)}</strong><p class="muted">${esc(sc.blurb)}</p></div></div>`).join('')}</div>
   </section>`;
 }
 
@@ -353,8 +365,8 @@ function learnMore(scope) {
   startStudy(scope);
 }
 
-function nextDueLine(t) {
-  const next = nextDue(state, DECKS, t);
+function nextDueLine(t, sc) {
+  const next = nextDue(state, sc ? sc.decks : DECKS, t);
   if (!next) return 'Nothing is due. Tomorrow brings new cards.';
   return `Nothing is due right now. The next card comes back ${whenText(next, t)}.`;
 }
@@ -938,6 +950,12 @@ app.addEventListener('click', async (e) => {
   if (!el) return;
   const d = el.dataset;
   if (d.go) return go(d.go);
+  if (d.tab) {
+    state.settings.tab = d.tab;
+    commit();
+    render();
+    return app.querySelector(`[data-tab="${d.tab}"]`)?.focus();
+  }
   if (d.study) return startStudy(d.study);
   if (d.browse) return go('browse', { deck: d.browse });
   if (d.guide) return go('guide', { deck: screen.deck, item: d.guide });
