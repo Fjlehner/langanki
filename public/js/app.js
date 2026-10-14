@@ -166,7 +166,7 @@ function welcomeHTML() {
       </div>
       <p class="error" id="restore-error" role="alert" hidden></p>
     </form>
-    ${mobile ? '' : phoneQR(location.origin + '/', 'Open on your phone', 'Scan with your phone’s camera to open LangAnki there. To bring your progress along, tap “I have a code” on your phone and enter your code.')}
+    ${mobile ? '' : siteQR()}
     <ul class="welcome__points">
       <li><strong>Spaced repetition.</strong> The FSRS scheduler (the one in current Anki) brings each card back just before you’d forget it.</li>
       <li><strong>Both directions.</strong> Read the character, then write it from its sound once you know it.</li>
@@ -190,6 +190,9 @@ function totals(t = now(), scope = null) {
   }
   return { review, fresh, learning, due: review + learning, any: review + learning + fresh };
 }
+
+// The site's address as a QR code, with how to bring progress along.
+const siteQR = () => phoneQR(location.origin + '/', 'Open on your phone', 'Scan with your phone’s camera to open LangAnki there. To bring your progress along, tap “I have a code” on your phone and enter your code.');
 
 // Desktop only: a QR code for continuing on a phone. Filled in after render.
 function phoneQR(url, title, text) {
@@ -887,6 +890,7 @@ function codeHTML() {
         ${state.codeSaved ? '' : '<button class="btn" data-act="code-saved">I’ve saved it</button>'}
       </div>
       <p class="muted small">Codes ignore capital letters and dashes, and read O as zero and I or L as one.</p>
+      ${mobile ? '' : siteQR()}
     </section>`;
   }
   return `<section class="narrow code-page">
@@ -904,6 +908,7 @@ function codeHTML() {
       <p class="error" id="restore-error" role="alert" hidden></p>
       <p class="help">Progress already on this device is combined with it.</p>
     </form>
+    ${mobile ? '' : siteQR()}
   </section>`;
 }
 

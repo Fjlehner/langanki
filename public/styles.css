@@ -129,7 +129,7 @@ kbd { font: 600 0.7rem/1 var(--font-ui); padding: 3px 5px; border-radius: 4px; b
 .link { background: none; border: 0; padding: 6px 0; font: 600 0.95rem/1.2 var(--font-ui); color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; text-decoration-color: var(--line); }
 .link:hover { text-decoration-color: currentColor; }
 .link--small { font-size: 0.875rem; color: var(--muted); align-self: center; }
-.back { margin-bottom: 8px; color: var(--muted); }
+.back { margin-bottom: 8px; color: var(--muted); justify-self: start; }
 .actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .actions--stack { flex-direction: column; align-items: flex-start; }
 .chip { font: 600 0.85rem/1 var(--font-ui); padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; min-height: 36px; }

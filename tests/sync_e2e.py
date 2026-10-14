@@ -102,11 +102,16 @@ with sync_playwright() as p:
     b.wait_for_timeout(1500)
     assert len(cards(b, "kata:")) == 0, "the reset must not come back from A"
 
-    # The code page has no QR code (it's only on the welcome page).
+    # On a desktop, the code page has the same site-address QR code as the welcome page.
     b.goto(BASE + "/?device=desktop")
     b.click("[data-go=code]")
-    b.wait_for_selector(".code-big")
-    assert b.locator(".qr").count() == 0
+    b.wait_for_selector(".qr svg")
+    qr_png = os.path.join(OUT, "sync-code-qr.png")
+    b.locator(".qr__code").screenshot(path=qr_png)
+    import zxingcpp
+    from PIL import Image
+    found = zxingcpp.read_barcodes(Image.open(qr_png))
+    assert found and found[0].text == BASE + "/", [r.text for r in found]
 
     # Device C uses the restore link.
     c = browser.new_context().new_page()

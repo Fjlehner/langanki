@@ -71,7 +71,7 @@ Static single-page app (no framework, no build step) plus a small Worker for syn
 ## Welcome page and installing
 
 - The welcome page says the code works like a password and that no name, email or personal information is stored, and explains using it on any device, bookmarking, or adding it to the home screen (Joe's request).
-- On computers only, the welcome page shows a single QR code of the site's address (`location.origin`) with instructions to tap "I have a code" on the phone. Joe chose one QR code on the welcome page only, not a restore-link QR on the code page.
+- On computers only, the welcome page shows a single QR code of the site's address (`location.origin`) with instructions to tap "I have a code" on the phone. The same QR code is on the code page (both before and after getting a code). It always encodes the site address, never the restore link, so it never carries anyone's code.
 - `public/manifest.webmanifest` and `public/icons/` (an あ flashcard on vermilion) make it installable; there is deliberately no service worker, so a deploy can never be hidden behind a stale cache.
 
 ## Known gaps and ideas for next
